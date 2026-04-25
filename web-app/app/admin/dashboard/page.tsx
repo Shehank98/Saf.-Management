@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
@@ -22,6 +23,8 @@ const ALL_FEATURES = [
 ];
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const [authed, setAuthed] = useState(false);
   const [activeTab, setActiveTab] = useState('Overview');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
@@ -31,39 +34,58 @@ export default function AdminDashboard() {
   const [editLocName, setEditLocName] = useState('');
   const qc = useQueryClient();
 
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      router.replace('/login');
+    } else {
+      setAuthed(true);
+    }
+  }, [router]);
+
   const { data: statsData } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => api.get('/admin/dashboard').then((r) => r.data.data),
+    enabled: authed,
+    retry: false,
   });
 
   const { data: analyticsData } = useQuery({
     queryKey: ['admin-analytics'],
     queryFn: () => api.get('/admin/analytics').then((r) => r.data.data),
+    enabled: authed,
+    retry: false,
   });
 
   const { data: pendingUsers, isLoading: pendingLoading } = useQuery({
     queryKey: ['admin-pending-users'],
     queryFn: () => api.get('/admin/users/pending').then((r) => r.data.data),
-    enabled: activeTab === 'Users',
+    enabled: authed && activeTab === 'Users',
+    retry: false,
   });
 
   const { data: allUsers } = useQuery({
     queryKey: ['admin-all-users'],
     queryFn: () => api.get('/admin/users').then((r) => r.data.data),
-    enabled: activeTab === 'Users' || activeTab === 'Features',
+    enabled: authed && (activeTab === 'Users' || activeTab === 'Features'),
+    retry: false,
   });
 
   const { data: vendorsData } = useQuery({
     queryKey: ['admin-vendors'],
     queryFn: () => api.get('/admin/vendors').then((r) => r.data.data),
-    enabled: activeTab === 'Vendors',
+    enabled: authed && activeTab === 'Vendors',
+    retry: false,
   });
 
   const { data: locationsData, isLoading: locLoading } = useQuery({
     queryKey: ['admin-locations'],
     queryFn: () => api.get('/admin/locations').then((r) => r.data.data),
-    enabled: activeTab === 'Locations',
+    enabled: authed && activeTab === 'Locations',
+    retry: false,
   });
+
+  if (!authed) return null;
 
   const approveMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/approve`),
