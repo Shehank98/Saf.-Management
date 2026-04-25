@@ -146,7 +146,7 @@ export async function sendWhatsApp({ to, template, data, recipientId }: WhatsApp
     recipientPhone: to,
     type: 'WHATSAPP' as const,
     templateName: template,
-    templateData: data,
+    templateData: data as any,
     message: template,
   };
 

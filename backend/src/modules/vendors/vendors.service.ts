@@ -100,7 +100,7 @@ export async function activateSubscription(vendorId: string, months: number, pay
     prisma.subscriptionPayment.create({
       data: {
         vendorId,
-        amount: vendor.monthlyFee * months,
+        amount: vendor.monthlyFee.toNumber() * months,
         monthsCovered: months,
         paymentProof,
         status: 'PENDING',
