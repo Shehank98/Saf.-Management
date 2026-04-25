@@ -21,6 +21,16 @@
         "EXPO_PUBLIC_API_URL": "https://saf-system.up.railway.app"
       }
     },
+    "Preview": {
+      "distribution": "internal",
+      "node": "20.19.4",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://saf-system.up.railway.app"
+      }
+    },
     "production": {
       "node": "20.19.4",
       "env": {
