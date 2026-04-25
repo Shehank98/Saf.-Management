@@ -5,6 +5,7 @@ export interface AuthPayload {
   userId: string;
   email: string;
   role: UserRole;
+  approvalStatus: string;
 }
 
 export interface AuthRequest extends Request {

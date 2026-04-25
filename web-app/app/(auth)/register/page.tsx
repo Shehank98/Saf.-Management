@@ -17,7 +17,7 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().min(10).max(15),
   password: z.string().min(8, 'Minimum 8 characters'),
-  role: z.enum(['CUSTOMER', 'VENDOR', 'SAFARI_OWNER']),
+  role: z.enum(['VENDOR', 'SAFARI_OWNER']),
   vendorType: z.string().optional(),
   businessName: z.string().optional(),
   companyName: z.string().optional(),
@@ -25,14 +25,21 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const VENDOR_TYPES = ['JEEP_PROVIDER', 'GUIDE', 'RESTAURANT', 'ACCOMMODATION', 'CAMERA_RENTAL', 'OTHER'];
+const VENDOR_TYPES = [
+  { value: 'JEEP_PROVIDER', label: 'Jeep Provider' },
+  { value: 'GUIDE', label: 'Safari Guide' },
+  { value: 'RESTAURANT', label: 'Restaurant' },
+  { value: 'ACCOMMODATION', label: 'Accommodation' },
+  { value: 'CAMERA_RENTAL', label: 'Camera Rental' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState('');
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { role: 'CUSTOMER' },
+    defaultValues: { role: 'SAFARI_OWNER' },
   });
 
   const role = watch('role');
@@ -41,11 +48,9 @@ export default function RegisterPage() {
     setError('');
     try {
       const res = await api.post('/auth/register', data);
-      const { accessToken, refreshToken, user } = res.data.data;
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('user', JSON.stringify(user));
-      router.push(user.role === 'VENDOR' ? '/vendor/dashboard' : user.role === 'SAFARI_OWNER' ? '/owner/dashboard' : '/book');
+      const { user } = res.data.data;
+      localStorage.setItem('pendingUser', JSON.stringify({ name: user.name, email: user.email, role: user.role }));
+      router.push('/pending');
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as any).response?.data?.error
@@ -64,24 +69,25 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">🌿</div>
           <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
+          <p className="text-sm text-gray-500 mt-1">Join as a Safari Owner or Vendor</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label>Account type</Label>
-            <div className="grid grid-cols-3 gap-2 mt-1">
+            <div className="grid grid-cols-2 gap-3 mt-1">
               {[
-                { value: 'CUSTOMER', label: 'Customer', icon: '👤' },
-                { value: 'VENDOR', label: 'Vendor', icon: '🔧' },
-                { value: 'SAFARI_OWNER', label: 'Owner', icon: '🏢' },
+                { value: 'SAFARI_OWNER', label: 'Safari Owner', icon: '🏢', desc: 'Run safari tours' },
+                { value: 'VENDOR', label: 'Vendor', icon: '🔧', desc: 'Provide services' },
               ].map((opt) => (
                 <label key={opt.value} className="cursor-pointer">
                   <input type="radio" value={opt.value} {...register('role')} className="sr-only" />
-                  <div className={`p-3 border-2 rounded-xl text-center text-sm transition-all ${
-                    role === opt.value ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                  <div className={`p-4 border-2 rounded-xl text-center text-sm transition-all ${
+                    role === opt.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
                   }`}>
-                    <div className="text-xl mb-1">{opt.icon}</div>
-                    {opt.label}
+                    <div className="text-2xl mb-1">{opt.icon}</div>
+                    <div className="font-semibold text-gray-800">{opt.label}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{opt.desc}</div>
                   </div>
                 </label>
               ))}
@@ -93,20 +99,17 @@ export default function RegisterPage() {
             <Input id="name" className="mt-1" placeholder="John Doe" {...register('name')} />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
           </div>
-
           <div>
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" className="mt-1" placeholder="you@example.com" {...register('email')} />
           </div>
-
           <div>
             <Label htmlFor="phone">Phone</Label>
             <Input id="phone" className="mt-1" placeholder="+94771234567" {...register('phone')} />
           </div>
-
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" className="mt-1" placeholder="••••••••" {...register('password')} />
+            <Input id="password" type="password" className="mt-1" placeholder="Min. 8 characters" {...register('password')} />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
 
@@ -114,14 +117,14 @@ export default function RegisterPage() {
             <>
               <div>
                 <Label>Vendor Type</Label>
-                <select {...register('vendorType')} className="mt-1 w-full h-10 rounded-md border px-3 text-sm">
+                <select {...register('vendorType')} className="mt-1 w-full h-10 rounded-md border px-3 text-sm bg-white">
                   <option value="">Select type...</option>
-                  {VENDOR_TYPES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                  {VENDOR_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
                 <Label htmlFor="businessName">Business Name</Label>
-                <Input id="businessName" className="mt-1" {...register('businessName')} />
+                <Input id="businessName" className="mt-1" placeholder="My Safari Services Ltd." {...register('businessName')} />
               </div>
             </>
           )}
@@ -130,11 +133,11 @@ export default function RegisterPage() {
             <>
               <div>
                 <Label htmlFor="companyName">Company Name</Label>
-                <Input id="companyName" className="mt-1" {...register('companyName')} />
+                <Input id="companyName" className="mt-1" placeholder="Safari Adventures Ltd." {...register('companyName')} />
               </div>
               <div>
                 <Label htmlFor="companyAddress">Company Address</Label>
-                <Input id="companyAddress" className="mt-1" {...register('companyAddress')} />
+                <Input id="companyAddress" className="mt-1" placeholder="No. 1, Safari Road, Yala" {...register('companyAddress')} />
               </div>
             </>
           )}

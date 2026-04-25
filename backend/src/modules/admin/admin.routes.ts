@@ -43,7 +43,42 @@ router.get('/analytics', wrap(async (req: any, res: any) => {
   res.json(successResponse(data));
 }));
 
-// Internal cron trigger endpoints
+// ==================== USER APPROVAL ====================
+
+router.get('/users/pending', wrap(async (_req: any, res: any) => {
+  const users = await service.getPendingUsers();
+  res.json(successResponse(users));
+}));
+
+router.get('/users', wrap(async (_req: any, res: any) => {
+  const users = await service.getAllUsers();
+  res.json(successResponse(users));
+}));
+
+router.patch('/users/:id/approve', wrap(async (req: any, res: any) => {
+  const user = await service.approveUser(req.params.id);
+  res.json(successResponse(user, 'User approved'));
+}));
+
+router.patch('/users/:id/reject', wrap(async (req: any, res: any) => {
+  const user = await service.rejectUser(req.params.id, req.body.note);
+  res.json(successResponse(user, 'User rejected'));
+}));
+
+// ==================== FEATURE MANAGEMENT ====================
+
+router.get('/users/:id/features', wrap(async (req: any, res: any) => {
+  const features = await service.getUserFeatures(req.params.id);
+  res.json(successResponse(features));
+}));
+
+router.patch('/users/:id/features', wrap(async (req: any, res: any) => {
+  const features = await service.setUserFeatures(req.params.id, req.body.features);
+  res.json(successResponse(features, 'Features updated'));
+}));
+
+// ==================== CRON TRIGGERS ====================
+
 router.post('/cron/payment-deadlines', wrap(async (_req: any, res: any) => {
   await checkPaymentDeadlines();
   res.json(successResponse(null, 'Completed'));

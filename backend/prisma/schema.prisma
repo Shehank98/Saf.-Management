@@ -32,22 +32,54 @@ enum VendorStatus {
   EXPIRED
 }
 
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Feature {
+  SHARED_TRIPS
+  PRIVATE_SAFARI
+  BOOKING_MANAGEMENT
+  VENDOR_LISTINGS
+  REPORTS_ANALYTICS
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  phone     String   @unique
-  password  String
-  role      UserRole
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String         @id @default(cuid())
+  email          String         @unique
+  phone          String         @unique
+  password       String
+  role           UserRole
+  name           String
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvalNote   String?
+  approvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   vendor          Vendor?
   safariOwner     SafariOwner?
   customerProfile Customer?
   refreshTokens   RefreshToken[]
+  features        UserFeature[]
 
   @@index([email, phone])
+  @@index([approvalStatus, role])
+}
+
+model UserFeature {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   Feature
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, feature])
+  @@index([userId])
 }
 
 model RefreshToken {

@@ -28,22 +28,54 @@ const ROLE_REDIRECTS: Record<string, string> = {
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState('');
+  const [isPending, setIsPending] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
   const onSubmit = async (data: FormData) => {
     setError('');
+    setIsPending(false);
     try {
       const { user } = await loginUser(data.email, data.password);
       router.push(ROLE_REDIRECTS[user.role] || '/');
     } catch (err: unknown) {
+      const status = err && typeof err === 'object' && 'response' in err
+        ? (err as any).response?.status : null;
       const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as any).response?.data?.error
-        : 'Login failed';
-      setError(msg || 'Login failed');
+        ? (err as any).response?.data?.error : 'Login failed';
+
+      if (status === 403 && msg?.toLowerCase().includes('pending')) {
+        setIsPending(true);
+      } else {
+        setError(msg || 'Login failed');
+      }
     }
   };
+
+  if (isPending) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center"
+        >
+          <div className="text-5xl mb-4">⏳</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Pending Approval</h2>
+          <p className="text-gray-500 mb-6">
+            Your account is under review by the Super Admin. You will be able to log in once approved.
+          </p>
+          <button
+            onClick={() => setIsPending(false)}
+            className="text-green-600 font-medium hover:text-green-700 underline"
+          >
+            Back to login
+          </button>
+        </motion.div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center px-4">
@@ -69,13 +101,9 @@ export default function LoginPage() {
             <Input id="password" type="password" className="mt-1" placeholder="••••••••" {...register('password')} />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
-
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
           )}
-
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Signing in...' : 'Sign In'}
           </Button>
@@ -83,9 +111,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-green-600 hover:text-green-700 font-medium">
-            Register
-          </Link>
+          <Link href="/register" className="text-green-600 hover:text-green-700 font-medium">Register</Link>
         </p>
       </motion.div>
     </main>

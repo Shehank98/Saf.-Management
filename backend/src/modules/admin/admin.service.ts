@@ -10,6 +10,7 @@ export async function getDashboardStats() {
     activeOwners,
     totalVendors,
     activeVendors,
+    pendingUsers,
     sharedSafaris,
     privateSafaris,
     revenue,
@@ -19,6 +20,7 @@ export async function getDashboardStats() {
     prisma.safariOwner.count({ where: { subscriptionStatus: 'ACTIVE' } }),
     prisma.vendor.count(),
     prisma.vendor.count({ where: { subscriptionStatus: 'ACTIVE' } }),
+    prisma.user.count({ where: { approvalStatus: 'PENDING', role: { in: ['SAFARI_OWNER', 'VENDOR'] } } }),
     prisma.sharedJeep.count({ where: { createdAt: { gte: monthStart } } }),
     prisma.privateSafari.count({ where: { createdAt: { gte: monthStart } } }),
     prisma.superAdminCommission.aggregate({
@@ -34,6 +36,7 @@ export async function getDashboardStats() {
   return {
     owners: { total: totalOwners, active: activeOwners },
     vendors: { total: totalVendors, active: activeVendors },
+    pendingApprovals: pendingUsers,
     safaris: { shared: sharedSafaris, private: privateSafaris },
     revenue: {
       thisMonth: revenue._sum.commissionAmount || 0,
@@ -46,7 +49,7 @@ export async function listOwners(status?: string) {
   return prisma.safariOwner.findMany({
     where: status ? { subscriptionStatus: status as any } : {},
     include: {
-      user: { select: { id: true, name: true, email: true, phone: true } },
+      user: { select: { id: true, name: true, email: true, phone: true, approvalStatus: true } },
       ownerPayments: { orderBy: { createdAt: 'desc' }, take: 3 },
     },
     orderBy: { createdAt: 'desc' },
@@ -98,7 +101,7 @@ export async function listVendors(vendorType?: string, status?: string) {
       ...(status ? { subscriptionStatus: status as any } : {}),
     },
     include: {
-      user: { select: { id: true, name: true, email: true, phone: true } },
+      user: { select: { id: true, name: true, email: true, phone: true, approvalStatus: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -141,4 +144,65 @@ export async function getAnalytics(period: 'week' | 'month' | 'year' = 'month') 
   ]);
 
   return { sharedByStatus, privateByStatus, subscriptionRevenue: subscriptionRevenue._sum.amount || 0 };
+}
+
+// ==================== USER MANAGEMENT ====================
+
+export async function getPendingUsers() {
+  return prisma.user.findMany({
+    where: { approvalStatus: 'PENDING', role: { in: ['SAFARI_OWNER', 'VENDOR'] } },
+    include: {
+      vendor: { select: { businessName: true, vendorType: true, businessAddress: true } },
+      safariOwner: { select: { companyName: true, companyAddress: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function getAllUsers() {
+  return prisma.user.findMany({
+    where: { role: { in: ['SAFARI_OWNER', 'VENDOR'] } },
+    include: {
+      vendor: { select: { businessName: true, vendorType: true } },
+      safariOwner: { select: { companyName: true } },
+      features: { select: { feature: true, enabled: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function approveUser(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw Object.assign(new Error('User not found'), { status: 404 });
+  return prisma.user.update({
+    where: { id: userId },
+    data: { approvalStatus: 'APPROVED', approvedAt: new Date(), approvalNote: null },
+  });
+}
+
+export async function rejectUser(userId: string, note?: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw Object.assign(new Error('User not found'), { status: 404 });
+  return prisma.user.update({
+    where: { id: userId },
+    data: { approvalStatus: 'REJECTED', approvalNote: note || 'Rejected by admin' },
+  });
+}
+
+export async function getUserFeatures(userId: string) {
+  return prisma.userFeature.findMany({ where: { userId } });
+}
+
+export async function setUserFeatures(
+  userId: string,
+  features: { feature: string; enabled: boolean }[]
+) {
+  const ops = features.map((f) =>
+    prisma.userFeature.upsert({
+      where: { userId_feature: { userId, feature: f.feature as any } },
+      create: { userId, feature: f.feature as any, enabled: f.enabled },
+      update: { enabled: f.enabled },
+    })
+  );
+  return prisma.$transaction(ops);
 }

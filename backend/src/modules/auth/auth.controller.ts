@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from './auth.service';
 import { RegisterDto, LoginDto, RefreshTokenDto } from './dto/register.dto';
-import { successResponse, errorResponse } from '../../types';
+import { successResponse, errorResponse, AuthRequest } from '../../types';
 
 export async function register(req: Request, res: Response): Promise<void> {
   const parsed = RegisterDto.safeParse(req.body);
@@ -37,4 +37,9 @@ export async function logout(req: Request, res: Response): Promise<void> {
   const { refreshToken } = req.body;
   if (refreshToken) await authService.logout(refreshToken);
   res.json(successResponse(null, 'Logged out successfully'));
+}
+
+export async function me(req: AuthRequest, res: Response): Promise<void> {
+  const result = await authService.getMe(req.user!.userId);
+  res.json(successResponse(result));
 }
