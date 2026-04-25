@@ -7,14 +7,15 @@ import { randomBytes } from 'crypto';
 const MIN_SEATS = 4;
 const MAX_SEATS = 6;
 
-export async function getAvailableDates(ownerId?: string) {
+export async function getAvailableDates(ownerId?: string, locationId?: string) {
   const jeeps = await prisma.sharedJeep.findMany({
     where: {
       safariDate: { gte: new Date() },
       status: { in: ['OPEN', 'PENDING_PAYMENT', 'CONFIRMED'] },
       ...(ownerId ? { ownerId } : {}),
+      ...(locationId ? { locationId } : {}),
     },
-    select: { safariDate: true, safariType: true, reservedSeats: true, paidSeats: true, totalSeats: true, status: true },
+    select: { safariDate: true, safariType: true, reservedSeats: true, paidSeats: true, totalSeats: true, status: true, locationId: true },
     orderBy: { safariDate: 'asc' },
   });
 
@@ -31,6 +32,7 @@ export async function getAvailableDates(ownerId?: string) {
       type: j.safariType,
       availableSeats: j.totalSeats - j.reservedSeats,
       status: j.status,
+      locationId: j.locationId,
     })),
   }));
 }
@@ -332,9 +334,19 @@ export async function createSharedJeep(ownerId: string, data: {
   safariDate: string;
   safariType: string;
   pricePerSeat: number;
+  locationId: string;
 }) {
   const safariDate = new Date(data.safariDate);
   const safariDeadline = addHours(safariDate, -24);
+
+  if (data.locationId) {
+    const ownerLoc = await prisma.safariOwnerLocation.findFirst({
+      where: { ownerId, locationId: data.locationId },
+    });
+    if (!ownerLoc) {
+      throw Object.assign(new Error('You do not operate in this location'), { status: 403 });
+    }
+  }
 
   return prisma.sharedJeep.create({
     data: {
@@ -343,6 +355,7 @@ export async function createSharedJeep(ownerId: string, data: {
       safariType: data.safariType,
       pricePerSeat: data.pricePerSeat,
       safariDeadline,
+      locationId: data.locationId || null,
     },
   });
 }
@@ -358,6 +371,7 @@ export async function getOwnerSharedJeeps(ownerId: string) {
       },
       jeepAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
       guideAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
+      location: { select: { id: true, name: true } },
     },
     orderBy: { safariDate: 'desc' },
   });
@@ -367,6 +381,18 @@ export async function assignVendors(
   jeepId: string,
   vendors: { guideVendorId?: string; jeepVendorId?: string; guideFee?: number; jeepRentalFee?: number; jeepNumber?: string }
 ) {
+  const jeep = await prisma.sharedJeep.findUnique({ where: { id: jeepId }, select: { locationId: true } });
+  if (jeep?.locationId) {
+    if (vendors.jeepVendorId) {
+      const ok = await prisma.vendorLocation.findFirst({ where: { vendorId: vendors.jeepVendorId, locationId: jeep.locationId } });
+      if (!ok) throw Object.assign(new Error('Jeep vendor does not service this location'), { status: 400 });
+    }
+    if (vendors.guideVendorId) {
+      const ok = await prisma.vendorLocation.findFirst({ where: { vendorId: vendors.guideVendorId, locationId: jeep.locationId } });
+      if (!ok) throw Object.assign(new Error('Guide vendor does not service this location'), { status: 400 });
+    }
+  }
+
   const ops: any[] = [];
 
   if (vendors.jeepVendorId && vendors.jeepNumber && vendors.jeepRentalFee !== undefined) {

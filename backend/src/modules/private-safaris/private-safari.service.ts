@@ -6,9 +6,19 @@ export async function createInquiry(ownerId: string, data: {
   numberOfGuests: number;
   totalAmount: number;
   depositPercentage?: number;
+  locationId: string;
 }) {
   const depositPct = data.depositPercentage || 30;
   const depositAmount = (data.totalAmount * depositPct) / 100;
+
+  if (data.locationId) {
+    const ownerLoc = await prisma.safariOwnerLocation.findFirst({
+      where: { ownerId, locationId: data.locationId },
+    });
+    if (!ownerLoc) {
+      throw Object.assign(new Error('You do not operate in this location'), { status: 403 });
+    }
+  }
 
   return prisma.privateSafari.create({
     data: {
@@ -19,6 +29,7 @@ export async function createInquiry(ownerId: string, data: {
       totalAmount: data.totalAmount,
       depositAmount,
       status: 'INQUIRY',
+      locationId: data.locationId || null,
     },
   });
 }
@@ -31,6 +42,7 @@ export async function getPrivateSafari(id: string) {
       jeepAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
       guideAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
       mealOrders: { include: { vendor: { include: { user: { select: { name: true } } } } } },
+      location: { select: { id: true, name: true } },
     },
   });
 }
@@ -46,6 +58,18 @@ export async function assignVendors(id: string, vendors: {
   rentalFee?: number;
   guideFee?: number;
 }) {
+  const safari = await prisma.privateSafari.findUnique({ where: { id }, select: { locationId: true } });
+  if (safari?.locationId) {
+    if (vendors.jeepVendorId) {
+      const ok = await prisma.vendorLocation.findFirst({ where: { vendorId: vendors.jeepVendorId, locationId: safari.locationId } });
+      if (!ok) throw Object.assign(new Error('Jeep vendor does not service this location'), { status: 400 });
+    }
+    if (vendors.guideVendorId) {
+      const ok = await prisma.vendorLocation.findFirst({ where: { vendorId: vendors.guideVendorId, locationId: safari.locationId } });
+      if (!ok) throw Object.assign(new Error('Guide vendor does not service this location'), { status: 400 });
+    }
+  }
+
   const ops: any[] = [];
 
   if (vendors.jeepVendorId && vendors.jeepNumber && vendors.rentalFee !== undefined) {
@@ -79,6 +103,7 @@ export async function getOwnerSafaris(ownerId: string, status?: string) {
     },
     include: {
       booking: { include: { customer: { include: { user: { select: { name: true } } } } } },
+      location: { select: { id: true, name: true } },
     },
     orderBy: { safariDate: 'desc' },
   });

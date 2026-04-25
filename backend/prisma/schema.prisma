@@ -103,8 +103,10 @@ model Location {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owners  SafariOwnerLocation[]
-  vendors VendorLocation[]
+  owners         SafariOwnerLocation[]
+  vendors        VendorLocation[]
+  privateSafaris PrivateSafari[] @relation("PrivateSafariLocation")
+  sharedJeeps    SharedJeep[]    @relation("SharedJeepLocation")
 
   @@index([isActive])
 }
@@ -221,6 +223,8 @@ model PrivateSafari {
   id             String              @id @default(cuid())
   ownerId        String
   owner          SafariOwner         @relation(fields: [ownerId], references: [id])
+  locationId     String?
+  location       Location?           @relation("PrivateSafariLocation", fields: [locationId], references: [id])
   safariDate     DateTime
   safariType     String
   numberOfGuests Int
@@ -291,6 +295,8 @@ model SharedJeep {
   id          String           @id @default(cuid())
   ownerId     String
   owner       SafariOwner      @relation(fields: [ownerId], references: [id])
+  locationId  String?
+  location    Location?        @relation("SharedJeepLocation", fields: [locationId], references: [id])
   safariDate  DateTime
   safariType  String
   status      SharedJeepStatus @default(OPEN)

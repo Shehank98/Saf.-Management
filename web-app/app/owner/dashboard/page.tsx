@@ -12,7 +12,11 @@ interface UserFeature { feature: string; enabled: boolean; }
 interface MeData {
   name: string; role: string; approvalStatus: string;
   features: UserFeature[];
-  safariOwner?: { companyName: string; subscriptionStatus: string; };
+  safariOwner?: {
+    companyName: string;
+    subscriptionStatus: string;
+    locations: { location: { id: string; name: string; } }[];
+  };
 }
 
 const STATUS_BADGE: Record<string, 'success' | 'warning' | 'destructive' | 'info'> = {
@@ -38,8 +42,10 @@ export default function OwnerDashboard() {
   const [showNewPrivate, setShowNewPrivate] = useState(false);
   const [newPrivateForm, setNewPrivateForm] = useState({
     safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '',
-    customerName: '', customerPhone: '',
+    customerName: '', customerPhone: '', locationId: '',
   });
+  const [showNewShared, setShowNewShared] = useState(false);
+  const [newSharedForm, setNewSharedForm] = useState({ safariDate: '', safariType: 'Full Day', pricePerSeat: '', locationId: '' });
   const qc = useQueryClient();
   useEffect(() => setMounted(true), []);
 
@@ -79,7 +85,16 @@ export default function OwnerDashboard() {
       qc.invalidateQueries({ queryKey: ['owner-private-safaris'] });
       qc.invalidateQueries({ queryKey: ['owner-dashboard'] });
       setShowNewPrivate(false);
-      setNewPrivateForm({ safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '', customerName: '', customerPhone: '' });
+      setNewPrivateForm({ safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '', customerName: '', customerPhone: '', locationId: '' });
+    },
+  });
+
+  const createSharedMutation = useMutation({
+    mutationFn: (body: any) => api.post('/shared-safari/jeeps', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner-jeeps'] });
+      setShowNewShared(false);
+      setNewSharedForm({ safariDate: '', safariType: 'Full Day', pricePerSeat: '', locationId: '' });
     },
   });
 
@@ -104,8 +119,8 @@ export default function OwnerDashboard() {
   if (has('VENDOR_LISTINGS'))  tabs.push({ key: 'vendors', label: 'Vendor Payments', icon: '💳' });
 
   const handleCreatePrivate = () => {
-    const { safariDate, numberOfGuests, totalAmount, customerName } = newPrivateForm;
-    if (!safariDate || !numberOfGuests || !totalAmount || !customerName) {
+    const { safariDate, numberOfGuests, totalAmount, customerName, locationId } = newPrivateForm;
+    if (!safariDate || !numberOfGuests || !totalAmount || !customerName || !locationId) {
       alert('Fill all required fields.');
       return;
     }
@@ -116,6 +131,21 @@ export default function OwnerDashboard() {
       totalAmount:    parseFloat(totalAmount),
       customerName:   customerName.trim(),
       customerPhone:  newPrivateForm.customerPhone.trim() || undefined,
+      locationId,
+    });
+  };
+
+  const handleCreateShared = () => {
+    const { safariDate, safariType, pricePerSeat, locationId } = newSharedForm;
+    if (!safariDate || !pricePerSeat || !locationId) {
+      alert('Fill all required fields.');
+      return;
+    }
+    createSharedMutation.mutate({
+      safariDate,
+      safariType,
+      pricePerSeat: parseFloat(pricePerSeat),
+      locationId,
     });
   };
 
@@ -283,6 +313,19 @@ export default function OwnerDashboard() {
                           />
                         </div>
                       ))}
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Location *</label>
+                        <select
+                          value={newPrivateForm.locationId}
+                          onChange={(e) => setNewPrivateForm((p) => ({ ...p, locationId: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                        >
+                          <option value="">Select location...</option>
+                          {me?.safariOwner?.locations?.map((l) => (
+                            <option key={l.location.id} value={l.location.id}>{l.location.name}</option>
+                          ))}
+                        </select>
+                      </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Safari Type *</label>
                         <select
