@@ -26,7 +26,11 @@
     },
     "scheme": "safariapp",
     "extra": {
-      "apiUrl": "https://saf-system.up.railway.app"
-    }
+      "apiUrl": "https://saf-system.up.railway.app",
+      "eas": {
+        "projectId": "80ad2f84-2bb3-4874-8e7e-cad35403d3fb"
+      }
+    },
+    "owner": "shehan98"
   }
 }
