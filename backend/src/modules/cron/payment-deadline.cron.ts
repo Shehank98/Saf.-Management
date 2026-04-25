@@ -2,6 +2,9 @@ import { prisma } from '../../config/database';
 import { sendWhatsApp } from '../notifications/whatsapp.service';
 import { logger } from '../../utils/logger';
 
+const MIN_SEATS = 4;
+const MAX_SEATS = 6;
+
 export async function checkPaymentDeadlines(): Promise<void> {
   logger.info('Running payment deadline check...');
   const now = new Date();
@@ -93,6 +96,3 @@ async function reEvaluateJeepStatus(jeepId: string): Promise<void> {
     logger.info(`Jeep ${jeepId} status updated to ${newStatus} (active: ${activeCount}, paid: ${paidCount})`);
   }
 }
-
-const MIN_SEATS = 4;
-const MAX_SEATS = 6;

@@ -3,17 +3,6 @@ import { sendWhatsApp } from '../notifications/whatsapp.service';
 import { logger } from '../../utils/logger';
 import { addHours } from '../../utils/date-helpers';
 
-// Safari duration approximation in hours by type
-const SAFARI_DURATION: Record<string, number> = {
-  'Full Day': 11,    // 6am → 5pm
-  'Morning Half': 6, // 6am → 12pm
-  'Afternoon Half': 4, // 2pm → 6pm
-};
-
-function getSafariDuration(safariType: string): number {
-  return SAFARI_DURATION[safariType] ?? 8;
-}
-
 export async function checkPreSafariReminders(): Promise<void> {
   logger.info('Running pre-safari reminder check...');
   const now = new Date();
