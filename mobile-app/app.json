@@ -26,7 +26,7 @@
     },
     "scheme": "safariapp",
     "extra": {
-      "apiUrl": "https://REPLACE_WITH_YOUR_RAILWAY_URL.up.railway.app"
+      "apiUrl": "https://saf-system.up.railway.app"
     }
   }
 }
