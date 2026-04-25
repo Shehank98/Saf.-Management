@@ -21,8 +21,10 @@ app.set('trust proxy', 1);
 
 // Security
 app.use(helmet());
+// Mobile apps don't send an Origin header, so we allow all origins.
+// Restrict via ALLOWED_ORIGINS in production if needed for web-only clients.
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
   credentials: true,
 }));
 

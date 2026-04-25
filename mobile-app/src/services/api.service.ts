@@ -1,7 +1,12 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+// Priority: EXPO_PUBLIC_API_URL env var (EAS build) → app.json extra.apiUrl → localhost fallback
+const API_URL: string =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ||
+  'http://localhost:3000';
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
