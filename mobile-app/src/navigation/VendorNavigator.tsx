@@ -1,0 +1,58 @@
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Text } from 'react-native';
+import { DashboardScreen } from '../screens/vendor/DashboardScreen';
+import { EarningsScreen } from '../screens/vendor/EarningsScreen';
+import { SubscriptionScreen } from '../screens/vendor/SubscriptionScreen';
+import { Colors } from '../theme/colors';
+
+const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
+  return <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.6 }}>{icon}</Text>;
+}
+
+function DashboardStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: Colors.primary }, headerTintColor: Colors.white, headerTitleStyle: { fontWeight: '700' } }}>
+      <Stack.Screen name="DashboardMain" component={DashboardScreen} options={{ title: 'Dashboard' }} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ title: 'Subscription' }} />
+    </Stack.Navigator>
+  );
+}
+
+export function VendorNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.gray[400],
+        tabBarStyle: {
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
+          paddingBottom: 4,
+          height: 60,
+        },
+        headerShown: false,
+      }}
+    >
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardStack}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />, tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="Earnings"
+        component={EarningsScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💰" focused={focused} />, tabBarLabel: 'Earnings', headerShown: true, headerTitle: 'Earnings', headerStyle: { backgroundColor: Colors.primary }, headerTintColor: Colors.white }}
+      />
+      <Tab.Screen
+        name="SubscriptionTab"
+        component={SubscriptionScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💳" focused={focused} />, tabBarLabel: 'Subscribe', headerShown: true, headerTitle: 'Subscription', headerStyle: { backgroundColor: Colors.primary }, headerTintColor: Colors.white }}
+      />
+    </Tab.Navigator>
+  );
+}

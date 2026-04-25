@@ -1,0 +1,80 @@
+import { Request, Response } from 'express';
+import { AuthRequest, successResponse, errorResponse } from '../../types';
+import * as service from './shared-safari.service';
+import { isWithinRadius } from '../../utils/geofencing';
+import { prisma } from '../../config/database';
+
+const BASE_LOCATION = {
+  lat: parseFloat(process.env.BASE_LAT || '6.9271'),
+  lng: parseFloat(process.env.BASE_LNG || '79.8612'),
+};
+const MAX_RADIUS_KM = parseFloat(process.env.PICKUP_RADIUS_KM || '7');
+
+export async function getAvailableDates(req: Request, res: Response): Promise<void> {
+  const { ownerId } = req.query;
+  const dates = await service.getAvailableDates(ownerId as string | undefined);
+  res.json(successResponse(dates));
+}
+
+export async function getJeepsByDate(req: Request, res: Response): Promise<void> {
+  const { date, type } = req.params;
+  const jeeps = await service.getJeepsByDateAndType(date, type);
+  res.json(successResponse(jeeps));
+}
+
+export async function validateLocation(req: Request, res: Response): Promise<void> {
+  const { lat, lng } = req.body;
+  const valid = isWithinRadius({ lat, lng }, BASE_LOCATION, MAX_RADIUS_KM);
+  const distance = require('../../utils/geofencing').calculateDistance({ lat, lng }, BASE_LOCATION);
+  res.json(successResponse({ valid, distance: parseFloat(distance.toFixed(2)), maxRadius: MAX_RADIUS_KM }));
+}
+
+export async function reserveSeat(req: AuthRequest, res: Response): Promise<void> {
+  const { jeepId, seatNumber, ...pickupData } = req.body;
+
+  const customer = await prisma.customer.findUnique({ where: { userId: req.user!.userId } });
+  if (!customer) { res.status(404).json(errorResponse('Customer profile not found')); return; }
+
+  const valid = isWithinRadius(
+    { lat: pickupData.pickupLat, lng: pickupData.pickupLng },
+    BASE_LOCATION,
+    MAX_RADIUS_KM
+  );
+  if (!valid) {
+    res.status(400).json(errorResponse(`Pickup location is outside the ${MAX_RADIUS_KM}km service radius`));
+    return;
+  }
+
+  const booking = await service.reserveSeat(jeepId, customer.id, seatNumber, pickupData);
+  res.status(201).json(successResponse(booking, 'Seat reserved successfully'));
+}
+
+export async function getBooking(req: Request, res: Response): Promise<void> {
+  const booking = await service.getBookingById(req.params.bookingId);
+  if (!booking) { res.status(404).json(errorResponse('Booking not found')); return; }
+  res.json(successResponse(booking));
+}
+
+export async function confirmPayment(req: Request, res: Response): Promise<void> {
+  const result = await service.confirmPayment(req.params.bookingId, req.body.paymentId);
+  res.json(successResponse(result, 'Payment confirmed'));
+}
+
+export async function createJeep(req: AuthRequest, res: Response): Promise<void> {
+  const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  const jeep = await service.createSharedJeep(owner.id, req.body);
+  res.status(201).json(successResponse(jeep, 'Safari created'));
+}
+
+export async function getOwnerJeeps(req: AuthRequest, res: Response): Promise<void> {
+  const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  const jeeps = await service.getOwnerSharedJeeps(owner.id);
+  res.json(successResponse(jeeps));
+}
+
+export async function assignVendors(req: AuthRequest, res: Response): Promise<void> {
+  await service.assignVendors(req.params.jeepId, req.body);
+  res.json(successResponse(null, 'Vendors assigned'));
+}

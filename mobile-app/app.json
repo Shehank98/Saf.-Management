@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Safari Adventures",
+    "slug": "safari-adventures",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/images/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./src/assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a472a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "lk.safari.adventures",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We use your location to validate pickup proximity"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "backgroundColor": "#1a472a"
+      },
+      "package": "lk.safari.adventures",
+      "permissions": ["ACCESS_FINE_LOCATION", "NOTIFICATIONS"]
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-notifications", {
+        "icon": "./src/assets/images/notification-icon.png",
+        "color": "#1a472a"
+      }]
+    ],
+    "scheme": "safariapp",
+    "extra": {
+      "apiUrl": "http://localhost:3000"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "safari-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "web-app",
+    "mobile-app"
+  ],
+  "scripts": {
+    "dev:backend": "yarn workspace backend dev",
+    "dev:web": "yarn workspace web-app dev",
+    "dev:mobile": "yarn workspace mobile-app start",
+    "build:backend": "yarn workspace backend build",
+    "build:web": "yarn workspace web-app build",
+    "lint": "yarn workspaces run lint",
+    "test": "yarn workspaces run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
