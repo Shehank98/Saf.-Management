@@ -1,5 +1,8 @@
 import { prisma } from '../../config/database';
 import { addHours } from '../../utils/date-helpers';
+import { sendWhatsApp } from '../notifications/whatsapp.service';
+import { logger } from '../../utils/logger';
+import { randomBytes } from 'crypto';
 
 const MIN_SEATS = 4;
 const MAX_SEATS = 6;
@@ -90,6 +93,8 @@ export async function reserveSeat(
   const basePrice = parseFloat(jeep.pricePerSeat.toString());
   const totalAmount = basePrice + mealPrice + cameraRentalPrice;
 
+  const newReservedCount = jeep.bookings.length + 1;
+
   const booking = await prisma.$transaction(async (tx) => {
     const newBooking = await tx.sharedSafariBooking.create({
       data: {
@@ -115,15 +120,7 @@ export async function reserveSeat(
       },
     });
 
-    const newReservedCount = jeep.bookings.length + 1;
-
     let updateData: any = { reservedSeats: { increment: 1 } };
-
-    if (newReservedCount >= MIN_SEATS && jeep.status === 'OPEN') {
-      updateData.status = 'PENDING_PAYMENT';
-      updateData.paymentDeadline = addHours(new Date(), 24);
-    }
-
     if (newReservedCount >= MAX_SEATS) {
       updateData.status = 'FULLY_BOOKED';
     }
@@ -133,7 +130,81 @@ export async function reserveSeat(
     return newBooking;
   });
 
+  // When 4th seat is reserved: trigger payment links for all, create new jeep
+  if (newReservedCount === MIN_SEATS) {
+    setImmediate(() => {
+      triggerPaymentLinksForJeep(jeepId).catch((err) =>
+        logger.error(`Failed to trigger payment links for jeep ${jeepId}:`, err)
+      );
+      autoCreateJeep(jeep).catch((err) =>
+        logger.error(`Failed to auto-create jeep for ${jeepId}:`, err)
+      );
+    });
+  }
+
   return booking;
+}
+
+async function triggerPaymentLinksForJeep(jeepId: string): Promise<void> {
+  const deadline = addHours(new Date(), 24);
+
+  const bookings = await prisma.sharedSafariBooking.findMany({
+    where: { jeepId, status: 'RESERVED' },
+    include: {
+      customer: { include: { user: true } },
+      jeep: true,
+    },
+  });
+
+  if (bookings.length < MIN_SEATS) return;
+
+  // Mark jeep as PENDING_PAYMENT and set deadline
+  await prisma.sharedJeep.update({
+    where: { id: jeepId },
+    data: { status: 'PENDING_PAYMENT', paymentDeadline: deadline },
+  });
+
+  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app.up.railway.app';
+
+  for (const booking of bookings) {
+    const paymentLink = `${webAppUrl}/pay/${booking.id}`;
+
+    await prisma.sharedSafariBooking.update({
+      where: { id: booking.id },
+      data: {
+        status: 'PAYMENT_PENDING',
+        paymentDeadline: deadline,
+        paymentLinkSent: new Date(),
+      },
+    });
+
+    await sendWhatsApp({
+      to: booking.customer.user.phone,
+      template: 'payment_request',
+      recipientId: booking.customer.userId,
+      data: {
+        date: booking.jeep.safariDate.toDateString(),
+        amount: booking.totalAmount,
+        deadline: deadline.toLocaleString('en-US', { timeZone: 'Asia/Colombo', dateStyle: 'medium', timeStyle: 'short' }),
+        paymentLink,
+      },
+    }).catch(() => {});
+  }
+
+  logger.info(`Payment links sent to ${bookings.length} customers for jeep ${jeepId}`);
+}
+
+async function autoCreateJeep(originalJeep: { ownerId: string; safariDate: Date; safariType: string; pricePerSeat: any; safariDeadline: Date }): Promise<void> {
+  const newJeep = await prisma.sharedJeep.create({
+    data: {
+      ownerId: originalJeep.ownerId,
+      safariDate: originalJeep.safariDate,
+      safariType: originalJeep.safariType,
+      pricePerSeat: originalJeep.pricePerSeat,
+      safariDeadline: originalJeep.safariDeadline,
+    },
+  });
+  logger.info(`Auto-created new jeep ${newJeep.id} for date ${originalJeep.safariDate.toDateString()} type ${originalJeep.safariType}`);
 }
 
 export async function getBookingById(bookingId: string) {
@@ -155,6 +226,7 @@ export async function confirmPayment(bookingId: string, paymentId: string) {
   if (!booking) throw Object.assign(new Error('Booking not found'), { status: 404 });
 
   const paidCount = booking.jeep.bookings.length + 1;
+  const willConfirm = paidCount >= MIN_SEATS;
 
   await prisma.$transaction(async (tx) => {
     await tx.sharedSafariBooking.update({
@@ -163,15 +235,97 @@ export async function confirmPayment(bookingId: string, paymentId: string) {
     });
 
     const jeepUpdate: any = { paidSeats: { increment: 1 } };
-
-    if (paidCount >= MIN_SEATS && booking.jeep.status !== 'CONFIRMED') {
+    if (willConfirm && booking.jeep.status !== 'CONFIRMED') {
       jeepUpdate.status = 'CONFIRMED';
     }
 
     await tx.sharedJeep.update({ where: { id: booking.jeepId }, data: jeepUpdate });
   });
 
+  // When jeep first confirms, cancel other pending bookings for customers in this jeep
+  if (willConfirm) {
+    setImmediate(() => {
+      cancelConflictingBookings(booking.jeepId, booking.customerId).catch((err) =>
+        logger.error(`Failed to cancel conflicting bookings for jeep ${booking.jeepId}:`, err)
+      );
+    });
+  }
+
   return { bookingId, paidSeats: paidCount };
+}
+
+async function cancelConflictingBookings(confirmedJeepId: string, triggeringCustomerId: string): Promise<void> {
+  // Fetch the confirmed jeep to get confirmed date
+  const confirmedJeep = await prisma.sharedJeep.findUnique({ where: { id: confirmedJeepId } });
+  if (!confirmedJeep) return;
+
+  // Get all paid customers in this jeep
+  const paidBookings = await prisma.sharedSafariBooking.findMany({
+    where: { jeepId: confirmedJeepId, status: 'PAID' },
+    select: { customerId: true },
+  });
+  const confirmedCustomerIds = paidBookings.map((b) => b.customerId);
+
+  // Find RESERVED or PAYMENT_PENDING bookings for these customers on OTHER jeeps
+  const conflicting = await prisma.sharedSafariBooking.findMany({
+    where: {
+      customerId: { in: confirmedCustomerIds },
+      jeepId: { not: confirmedJeepId },
+      status: { in: ['RESERVED', 'PAYMENT_PENDING'] },
+    },
+    include: {
+      customer: { include: { user: true } },
+      jeep: true,
+    },
+  });
+
+  for (const conflict of conflicting) {
+    try {
+      await prisma.$transaction([
+        prisma.sharedSafariBooking.update({
+          where: { id: conflict.id },
+          data: { status: 'AUTO_CANCELLED' },
+        }),
+        prisma.sharedJeep.update({
+          where: { id: conflict.jeepId },
+          data: { reservedSeats: { decrement: 1 } },
+        }),
+      ]);
+
+      await sendWhatsApp({
+        to: conflict.customer.user.phone,
+        template: 'booking_conflict_cancelled',
+        recipientId: conflict.customer.userId,
+        data: {
+          cancelledDate: conflict.jeep.safariDate.toDateString(),
+          confirmedDate: confirmedJeep.safariDate.toDateString(),
+        },
+      }).catch(() => {});
+
+      logger.info(`Auto-cancelled conflicting booking ${conflict.id} for customer ${conflict.customerId}`);
+    } catch (err) {
+      logger.error(`Failed to auto-cancel conflict booking ${conflict.id}:`, err);
+    }
+  }
+}
+
+export async function checkCustomerConflicts(customerId: string, jeepId: string) {
+  const pendingBookings = await prisma.sharedSafariBooking.findMany({
+    where: {
+      customerId,
+      jeepId: { not: jeepId },
+      status: { in: ['RESERVED', 'PAYMENT_PENDING', 'PAID'] },
+    },
+    include: { jeep: { select: { safariDate: true, safariType: true, status: true } } },
+  });
+
+  return pendingBookings.map((b) => ({
+    bookingId: b.id,
+    safariDate: b.jeep.safariDate,
+    safariType: b.jeep.safariType,
+    status: b.status,
+    jeepStatus: b.jeep.status,
+  }));
 }
 
 export async function createSharedJeep(ownerId: string, data: {
@@ -236,4 +390,69 @@ export async function assignVendors(
   }
 
   if (ops.length > 0) await prisma.$transaction(ops);
+}
+
+export async function getPaymentTracking(jeepId: string) {
+  const jeep = await prisma.sharedJeep.findUnique({
+    where: { id: jeepId },
+    include: {
+      bookings: {
+        include: {
+          customer: { include: { user: { select: { name: true, phone: true } } } },
+        },
+        orderBy: { seatNumber: 'asc' },
+      },
+      guideAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
+    },
+  });
+
+  if (!jeep) return null;
+
+  const now = new Date();
+  const seats = jeep.bookings.map((b) => {
+    const msLeft = b.paymentDeadline ? b.paymentDeadline.getTime() - now.getTime() : null;
+    return {
+      bookingId: b.id,
+      seatNumber: b.seatNumber,
+      customerName: b.customer.user.name,
+      customerPhone: b.customer.user.phone,
+      status: b.status,
+      amount: b.totalAmount,
+      paymentDeadline: b.paymentDeadline,
+      minutesRemaining: msLeft !== null ? Math.max(0, Math.floor(msLeft / 60000)) : null,
+      paidAt: b.paidAt,
+    };
+  });
+
+  return {
+    jeepId: jeep.id,
+    safariDate: jeep.safariDate,
+    safariType: jeep.safariType,
+    status: jeep.status,
+    paidSeats: jeep.paidSeats,
+    reservedSeats: jeep.reservedSeats,
+    paymentDeadline: jeep.paymentDeadline,
+    guideName: jeep.guideAssignment?.vendor?.user?.name || null,
+    seats,
+  };
+}
+
+export async function generateBookingLink(jeepId: string) {
+  const token = randomBytes(16).toString('hex');
+  await prisma.sharedJeep.update({
+    where: { id: jeepId },
+    data: { bookingLinkToken: token },
+  });
+  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app.up.railway.app';
+  return { token, url: `${webAppUrl}/book/link/${token}` };
+}
+
+export async function getJeepByBookingToken(token: string) {
+  return prisma.sharedJeep.findUnique({
+    where: { bookingLinkToken: token },
+    include: {
+      bookings: { select: { seatNumber: true, status: true } },
+      owner: { select: { companyName: true } },
+    },
+  });
 }

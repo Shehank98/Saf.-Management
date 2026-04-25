@@ -237,6 +237,10 @@ model SharedJeep {
   assignedGuideId String?
   assignedJeepId  String?
 
+  bookingLinkToken  String?  @unique
+  reminderSent      Boolean  @default(false)
+  reviewRequestSent Boolean  @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

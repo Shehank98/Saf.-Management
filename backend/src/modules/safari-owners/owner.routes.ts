@@ -98,4 +98,18 @@ router.post('/vendor-payments/:id/mark-paid', wrap(async (_req: any, res: any) =
   res.json(successResponse(payment, 'Payment marked as paid'));
 }));
 
+router.get('/subscription', wrap(async (req: AuthRequest, res: any) => {
+  const owner = await prisma.safariOwner.findUnique({
+    where: { userId: req.user!.userId },
+    select: {
+      subscriptionStatus: true,
+      subscriptionStart: true,
+      subscriptionEnd: true,
+      monthlyFee: true,
+    },
+  });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  res.json(successResponse(owner));
+}));
+
 export { router as ownerRouter };

@@ -52,3 +52,13 @@ export async function getOwnerRevenue() {
   const res = await api.get('/owner/revenue');
   return res.data.data;
 }
+
+export async function getPaymentTracking(jeepId: string) {
+  const res = await api.get(`/shared-safari/jeeps/${jeepId}/payment-tracking`);
+  return res.data.data;
+}
+
+export async function generateBookingLink(jeepId: string) {
+  const res = await api.post(`/shared-safari/jeeps/${jeepId}/booking-link`);
+  return res.data.data;
+}

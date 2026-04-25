@@ -90,6 +90,48 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>) => object> = {
       },
     ],
   }),
+  safari_reminder_24h: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.pickupTime) },
+          { type: 'text', text: String(data.guideName) },
+          { type: 'text', text: String(data.jeepNumber) },
+        ],
+      },
+    ],
+  }),
+  review_request: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.customerName) },
+          { type: 'text', text: String(data.date) },
+        ],
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: 0,
+        parameters: [{ type: 'text', text: String(data.reviewLink) }],
+      },
+    ],
+  }),
+  booking_conflict_cancelled: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.cancelledDate) },
+          { type: 'text', text: String(data.confirmedDate) },
+        ],
+      },
+    ],
+  }),
 };
 
 export async function sendWhatsApp({ to, template, data, recipientId }: WhatsAppMessage): Promise<void> {

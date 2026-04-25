@@ -46,7 +46,7 @@ export async function reserveSeat(req: AuthRequest, res: Response): Promise<void
   }
 
   const booking = await service.reserveSeat(jeepId, customer.id, seatNumber, pickupData);
-  res.status(201).json(successResponse(booking, 'Seat reserved successfully'));
+  res.status(201).json(successResponse(booking, 'Seat reserved. Payment link will be sent when 4 seats are reserved.'));
 }
 
 export async function getBooking(req: Request, res: Response): Promise<void> {
@@ -77,4 +77,30 @@ export async function getOwnerJeeps(req: AuthRequest, res: Response): Promise<vo
 export async function assignVendors(req: AuthRequest, res: Response): Promise<void> {
   await service.assignVendors(req.params.jeepId, req.body);
   res.json(successResponse(null, 'Vendors assigned'));
+}
+
+export async function checkConflicts(req: AuthRequest, res: Response): Promise<void> {
+  const customer = await prisma.customer.findUnique({ where: { userId: req.user!.userId } });
+  if (!customer) { res.status(404).json(errorResponse('Customer profile not found')); return; }
+
+  const { jeepId } = req.query;
+  const conflicts = await service.checkCustomerConflicts(customer.id, jeepId as string || '');
+  res.json(successResponse({ hasConflicts: conflicts.length > 0, conflicts }));
+}
+
+export async function getJeepByToken(req: Request, res: Response): Promise<void> {
+  const jeep = await service.getJeepByBookingToken(req.params.token);
+  if (!jeep) { res.status(404).json(errorResponse('Booking link not found or expired')); return; }
+  res.json(successResponse(jeep));
+}
+
+export async function getPaymentTracking(req: AuthRequest, res: Response): Promise<void> {
+  const result = await service.getPaymentTracking(req.params.jeepId);
+  if (!result) { res.status(404).json(errorResponse('Safari not found')); return; }
+  res.json(successResponse(result));
+}
+
+export async function generateBookingLink(req: AuthRequest, res: Response): Promise<void> {
+  const result = await service.generateBookingLink(req.params.jeepId);
+  res.json(successResponse(result, 'Booking link generated'));
 }

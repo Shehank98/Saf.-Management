@@ -7,6 +7,7 @@ import { logger } from './utils/logger';
 import { checkPaymentDeadlines } from './modules/cron/payment-deadline.cron';
 import { checkSafariCancellations } from './modules/cron/safari-cancellation.cron';
 import { checkSubscriptionExpiry } from './modules/cron/subscription-expiry.cron';
+import { checkPreSafariReminders, checkPostSafariReviews } from './modules/cron/post-safari.cron';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -26,6 +27,12 @@ async function bootstrap() {
 
   cron.schedule('0 0 * * *', () => {
     checkSubscriptionExpiry().catch((err) => logger.error('Subscription expiry cron failed:', err));
+  });
+
+  // Hourly: 24h pre-safari reminder + 6h post-safari review request
+  cron.schedule('30 * * * *', () => {
+    checkPreSafariReminders().catch((err) => logger.error('Pre-safari reminder cron failed:', err));
+    checkPostSafariReviews().catch((err) => logger.error('Post-safari review cron failed:', err));
   });
 
   const server = app.listen(PORT, () => {

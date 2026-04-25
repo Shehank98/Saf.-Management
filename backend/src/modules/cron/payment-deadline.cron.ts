@@ -58,17 +58,41 @@ export async function checkPaymentDeadlines(): Promise<void> {
 async function reEvaluateJeepStatus(jeepId: string): Promise<void> {
   const jeep = await prisma.sharedJeep.findUnique({
     where: { id: jeepId },
-    include: { bookings: { where: { status: 'PAID' } } },
+    include: {
+      bookings: {
+        where: { status: { in: ['RESERVED', 'PAYMENT_PENDING', 'PAID'] } },
+      },
+    },
   });
 
-  if (!jeep) return;
+  if (!jeep || jeep.status === 'CANCELLED' || jeep.status === 'COMPLETED') return;
 
-  const paidCount = jeep.bookings.length;
+  const activeCount = jeep.bookings.length;
+  const paidCount = jeep.bookings.filter((b) => b.status === 'PAID').length;
 
-  if (paidCount < 4 && jeep.status === 'CONFIRMED') {
-    await prisma.sharedJeep.update({
-      where: { id: jeepId },
-      data: { status: 'PENDING_PAYMENT', paidSeats: paidCount },
-    });
+  let newStatus: string;
+  if (paidCount >= MIN_SEATS) {
+    newStatus = 'CONFIRMED';
+  } else if (activeCount >= MAX_SEATS) {
+    newStatus = 'FULLY_BOOKED';
+  } else if (activeCount >= MIN_SEATS) {
+    // Still has 4+ reserved/pending — keep PENDING_PAYMENT
+    newStatus = 'PENDING_PAYMENT';
+  } else {
+    // Dropped below 4 reserved — re-open for new reservations
+    newStatus = 'OPEN';
+  }
+
+  if (jeep.status !== newStatus) {
+    const updateData: any = { status: newStatus, paidSeats: paidCount };
+    // Clear payment deadline if we reverted to OPEN
+    if (newStatus === 'OPEN') {
+      updateData.paymentDeadline = null;
+    }
+    await prisma.sharedJeep.update({ where: { id: jeepId }, data: updateData });
+    logger.info(`Jeep ${jeepId} status updated to ${newStatus} (active: ${activeCount}, paid: ${paidCount})`);
   }
 }
+
+const MIN_SEATS = 4;
+const MAX_SEATS = 6;
