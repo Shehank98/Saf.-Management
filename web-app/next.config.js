@@ -2,7 +2,7 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3001', 'safari-management.up.railway.app'],
+      allowedOrigins: ['localhost:3001', 'https://safari-management.up.railway.app'],
     },
   },
   images: {
