@@ -6,16 +6,18 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "20.19.4",
+      "android": {
+        "image": "latest"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://saf-system.up.railway.app"
       }
     },
     "preview": {
       "distribution": "internal",
-      "node": "20.19.4",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://saf-system.up.railway.app"
@@ -23,16 +25,18 @@
     },
     "Preview": {
       "distribution": "internal",
-      "node": "20.19.4",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://saf-system.up.railway.app"
       }
     },
     "production": {
-      "node": "20.19.4",
+      "android": {
+        "image": "latest"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://saf-system.up.railway.app"
       }
