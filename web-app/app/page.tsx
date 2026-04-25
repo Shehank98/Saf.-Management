@@ -38,7 +38,7 @@ export default function HomePage() {
               <h2 className="text-2xl font-bold mb-2">Vendor Portal</h2>
               <p className="text-green-200 mb-6">Jeep providers, guides and restaurants join us</p>
               <Link
-                href="/auth/login"
+                href="/login"
                 className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
               >
                 Login
@@ -47,11 +47,11 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 text-sm text-green-300">
-            <Link href="/admin" className="hover:text-white transition-colors">Admin Dashboard</Link>
+            <Link href="/admin/dashboard" className="hover:text-white transition-colors">Admin Dashboard</Link>
             <span className="hidden sm:inline">•</span>
-            <Link href="/owner" className="hover:text-white transition-colors">Owner Portal</Link>
+            <Link href="/owner/dashboard" className="hover:text-white transition-colors">Owner Portal</Link>
             <span className="hidden sm:inline">•</span>
-            <Link href="/auth/register" className="hover:text-white transition-colors">Create Account</Link>
+            <Link href="/register" className="hover:text-white transition-colors">Create Account</Link>
           </div>
         </div>
       </div>
