@@ -10,7 +10,7 @@ const ACCESS_TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || '7d';
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
 function generateTokens(payload: AuthPayload) {
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: ACCESS_TOKEN_EXPIRY });
+  const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: ACCESS_TOKEN_EXPIRY as any });
   const refreshToken = uuidv4();
   return { accessToken, refreshToken };
 }
