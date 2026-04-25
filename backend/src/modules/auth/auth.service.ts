@@ -42,25 +42,42 @@ export async function register(input: RegisterInput) {
       if (!input.vendorType || !input.businessName) {
         throw new Error('Vendor type and business name required');
       }
-      await tx.vendor.create({
+      const vendor = await tx.vendor.create({
         data: {
           userId: newUser.id,
-          vendorType: input.vendorType as any,
-          businessName: input.businessName,
+          vendorType:      input.vendorType as any,
+          businessName:    input.businessName,
           businessAddress: input.businessAddress,
+          taxId:           input.taxId,
+          bankDetails:     input.bankDetails as any,
         },
       });
+      // Link service locations
+      if (input.locationIds?.length) {
+        await tx.vendorLocation.createMany({
+          data: input.locationIds.map((locationId) => ({ vendorId: vendor.id, locationId })),
+          skipDuplicates: true,
+        });
+      }
     } else if (input.role === 'SAFARI_OWNER') {
       if (!input.companyName || !input.companyAddress) {
         throw new Error('Company name and address required');
       }
-      await tx.safariOwner.create({
+      const owner = await tx.safariOwner.create({
         data: {
-          userId: newUser.id,
-          companyName: input.companyName,
+          userId:         newUser.id,
+          companyName:    input.companyName,
           companyAddress: input.companyAddress,
+          taxId:          input.taxId,
         },
       });
+      // Link operating locations
+      if (input.locationIds?.length) {
+        await tx.safariOwnerLocation.createMany({
+          data: input.locationIds.map((locationId) => ({ ownerId: owner.id, locationId })),
+          skipDuplicates: true,
+        });
+      }
     } else if (input.role === 'CUSTOMER') {
       await tx.customer.create({ data: { userId: newUser.id } });
     }
@@ -190,8 +207,8 @@ export async function getMe(userId: string) {
       approvalStatus: true,
       approvalNote: true,
       features: { select: { feature: true, enabled: true } },
-      vendor: { select: { businessName: true, vendorType: true, subscriptionStatus: true } },
-      safariOwner: { select: { companyName: true, subscriptionStatus: true } },
+      vendor: { select: { businessName: true, vendorType: true, subscriptionStatus: true, locations: { select: { location: { select: { id: true, name: true } } } } } },
+      safariOwner: { select: { companyName: true, subscriptionStatus: true, locations: { select: { location: { select: { id: true, name: true } } } } } },
     },
   });
   if (!user) throw Object.assign(new Error('User not found'), { status: 404 });

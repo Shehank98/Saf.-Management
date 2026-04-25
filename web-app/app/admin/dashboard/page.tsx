@@ -10,7 +10,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BillingTab } from '@/components/admin/BillingTab';
 
-const TABS = ['Overview', 'Users', 'Features', 'Billing', 'Vendors', 'Analytics'];
+const TABS = ['Overview', 'Users', 'Features', 'Billing', 'Vendors', 'Locations', 'Analytics'];
 const PIE_COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 const ALL_FEATURES = [
@@ -25,6 +25,10 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+  const [newLocName, setNewLocName] = useState('');
+  const [newLocDesc, setNewLocDesc] = useState('');
+  const [editLocId, setEditLocId] = useState<string | null>(null);
+  const [editLocName, setEditLocName] = useState('');
   const qc = useQueryClient();
 
   const { data: statsData } = useQuery({
@@ -55,6 +59,12 @@ export default function AdminDashboard() {
     enabled: activeTab === 'Vendors',
   });
 
+  const { data: locationsData, isLoading: locLoading } = useQuery({
+    queryKey: ['admin-locations'],
+    queryFn: () => api.get('/admin/locations').then((r) => r.data.data),
+    enabled: activeTab === 'Locations',
+  });
+
   const approveMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/approve`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-pending-users'] }); qc.invalidateQueries({ queryKey: ['admin-all-users'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
@@ -70,6 +80,31 @@ export default function AdminDashboard() {
     mutationFn: ({ userId, features }: { userId: string; features: { feature: string; enabled: boolean }[] }) =>
       api.patch(`/admin/users/${userId}/features`, { features }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-all-users'] }),
+  });
+
+  const createLocMutation = useMutation({
+    mutationFn: ({ name, description }: { name: string; description?: string }) =>
+      api.post('/admin/locations', { name, description }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-locations'] });
+      setNewLocName('');
+      setNewLocDesc('');
+    },
+  });
+
+  const toggleLocMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      api.patch(`/admin/locations/${id}`, { isActive }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-locations'] }),
+  });
+
+  const updateLocMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      api.patch(`/admin/locations/${id}`, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-locations'] });
+      setEditLocId(null);
+    },
   });
 
   const selectedUser = allUsers?.find((u: any) => u.id === selectedUserId);
@@ -380,6 +415,129 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'Billing' && <BillingTab />}
+
+        {/* ── LOCATIONS ── */}
+        {activeTab === 'Locations' && (
+          <div className="space-y-6">
+            {/* Create new location */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Add New Location</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex gap-3 flex-wrap">
+                  <input
+                    value={newLocName}
+                    onChange={(e) => setNewLocName(e.target.value)}
+                    placeholder="Location name (e.g. Yala National Park)"
+                    className="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <input
+                    value={newLocDesc}
+                    onChange={(e) => setNewLocDesc(e.target.value)}
+                    placeholder="Description (optional)"
+                    className="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newLocName.trim()) return;
+                      createLocMutation.mutate({ name: newLocName.trim(), description: newLocDesc.trim() || undefined });
+                    }}
+                    disabled={createLocMutation.isPending || !newLocName.trim()}
+                    className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {createLocMutation.isPending ? 'Adding...' : '+ Add Location'}
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Locations list */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  All Locations
+                  {locationsData && (
+                    <span className="text-sm font-normal text-gray-400">
+                      ({locationsData.filter((l: any) => l.isActive).length} active)
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {locLoading ? (
+                  <p className="text-gray-400 text-sm py-4 text-center">Loading...</p>
+                ) : !locationsData?.length ? (
+                  <p className="text-gray-400 text-sm py-4 text-center">No locations yet. Add one above.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {locationsData.map((loc: any) => (
+                      <div
+                        key={loc.id}
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
+                          loc.isActive ? 'border-green-100 bg-green-50' : 'border-gray-100 bg-gray-50 opacity-60'
+                        }`}
+                      >
+                        <div className="text-xl">📍</div>
+                        <div className="flex-1 min-w-0">
+                          {editLocId === loc.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                value={editLocName}
+                                onChange={(e) => setEditLocName(e.target.value)}
+                                className="border rounded px-2 py-1 text-sm flex-1"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => updateLocMutation.mutate({ id: loc.id, name: editLocName })}
+                                disabled={updateLocMutation.isPending}
+                                className="text-xs bg-green-600 text-white px-3 py-1 rounded"
+                              >
+                                Save
+                              </button>
+                              <button onClick={() => setEditLocId(null)} className="text-xs text-gray-400 px-2">
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="font-semibold text-sm text-gray-900">{loc.name}</p>
+                              {loc.description && (
+                                <p className="text-xs text-gray-400 mt-0.5">{loc.description}</p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {loc._count?.owners || 0} owners · {loc._count?.vendors || 0} vendors
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {editLocId !== loc.id && (
+                            <button
+                              onClick={() => { setEditLocId(loc.id); setEditLocName(loc.name); }}
+                              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            onClick={() => toggleLocMutation.mutate({ id: loc.id, isActive: !loc.isActive })}
+                            disabled={toggleLocMutation.isPending}
+                            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                              loc.isActive
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
+                          >
+                            {loc.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* ── VENDORS ── */}
         {activeTab === 'Vendors' && (

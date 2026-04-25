@@ -50,6 +50,7 @@ export async function listOwners(status?: string) {
     where: status ? { subscriptionStatus: status as any } : {},
     include: {
       user: { select: { id: true, name: true, email: true, phone: true, approvalStatus: true } },
+      locations: { include: { location: { select: { id: true, name: true } } } },
       ownerPayments: { orderBy: { createdAt: 'desc' }, take: 3 },
     },
     orderBy: { createdAt: 'desc' },
@@ -102,6 +103,7 @@ export async function listVendors(vendorType?: string, status?: string) {
     },
     include: {
       user: { select: { id: true, name: true, email: true, phone: true, approvalStatus: true } },
+      locations: { include: { location: { select: { id: true, name: true } } } },
     },
     orderBy: { createdAt: 'desc' },
   });

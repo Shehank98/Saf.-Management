@@ -178,24 +178,30 @@ export async function getVendorJobs(userId: string) {
   return { jeepJobs, guideJobs };
 }
 
-export async function listAvailableVendors(vendorType?: string, date?: Date) {
+export async function listAvailableVendors(vendorType?: string, date?: Date, ownerUserId?: string) {
+  // If called by an owner, only show vendors who share at least one location with them
+  let sharedLocationIds: string[] | undefined;
+  if (ownerUserId) {
+    const owner = await prisma.safariOwner.findUnique({
+      where: { userId: ownerUserId },
+      include: { locations: { select: { locationId: true } } },
+    });
+    sharedLocationIds = owner?.locations.map((l) => l.locationId) ?? [];
+  }
+
   return prisma.vendor.findMany({
     where: {
       subscriptionStatus: 'ACTIVE',
       isAvailable: true,
       ...(vendorType ? { vendorType: vendorType as any } : {}),
-      ...(date
-        ? {
-            NOT: {
-              blockedDates: {
-                has: date,
-              },
-            },
-          }
+      ...(date ? { NOT: { blockedDates: { has: date } } } : {}),
+      ...(sharedLocationIds?.length
+        ? { locations: { some: { locationId: { in: sharedLocationIds } } } }
         : {}),
     },
     include: {
       user: { select: { name: true, phone: true } },
+      locations: { include: { location: { select: { id: true, name: true } } } },
     },
   });
 }

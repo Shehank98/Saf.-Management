@@ -93,6 +93,42 @@ model RefreshToken {
   @@index([userId])
 }
 
+// ==================== LOCATIONS ====================
+
+model Location {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owners  SafariOwnerLocation[]
+  vendors VendorLocation[]
+
+  @@index([isActive])
+}
+
+model SafariOwnerLocation {
+  ownerId    String
+  locationId String
+  owner      SafariOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  location   Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([ownerId, locationId])
+}
+
+model VendorLocation {
+  vendorId   String
+  locationId String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([vendorId, locationId])
+}
+
+// ==================== USERS ====================
+
 model Vendor {
   id              String       @id @default(cuid())
   userId          String       @unique
@@ -117,6 +153,7 @@ model Vendor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  locations            VendorLocation[]
   jeepAssignments      JeepAssignment[]
   guideAssignments     GuideAssignment[]
   mealOrders           MealOrder[]
@@ -127,12 +164,12 @@ model Vendor {
 }
 
 model SafariOwner {
-  id            String @id @default(cuid())
-  userId        String @unique
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName   String
+  id             String @id @default(cuid())
+  userId         String @unique
+  user           User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName    String
   companyAddress String
-  taxId         String?
+  taxId          String?
 
   subscriptionStatus VendorStatus @default(PENDING_PAYMENT)
   subscriptionStart  DateTime?
@@ -146,6 +183,7 @@ model SafariOwner {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  locations      SafariOwnerLocation[]
   privateSafaris PrivateSafari[]
   sharedJeeps    SharedJeep[]
   ownerPayments  OwnerSubscriptionPayment[]

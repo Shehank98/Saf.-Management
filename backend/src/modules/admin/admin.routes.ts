@@ -6,6 +6,7 @@ import { checkPaymentDeadlines } from '../cron/payment-deadline.cron';
 import { checkSafariCancellations } from '../cron/safari-cancellation.cron';
 import { checkSubscriptionExpiry } from '../cron/subscription-expiry.cron';
 import { successResponse } from '../../types';
+import { prisma } from '../../config/database';
 
 const router = Router();
 const wrap = (fn: Function) => (req: any, res: any, next: any) =>
@@ -92,6 +93,48 @@ router.post('/cron/safari-cancellations', wrap(async (_req: any, res: any) => {
 router.post('/cron/subscription-expiry', wrap(async (_req: any, res: any) => {
   await checkSubscriptionExpiry();
   res.json(successResponse(null, 'Completed'));
+}));
+
+// ==================== LOCATION MANAGEMENT ====================
+
+router.get('/locations', wrap(async (_req: any, res: any) => {
+  const locations = await prisma.location.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      _count: { select: { owners: true, vendors: true } },
+    },
+  });
+  res.json(successResponse(locations));
+}));
+
+router.post('/locations', wrap(async (req: any, res: any) => {
+  const { name, description } = req.body;
+  if (!name?.trim()) { res.status(400).json({ success: false, error: 'Name required' }); return; }
+  const location = await prisma.location.create({
+    data: { name: name.trim(), description: description?.trim() },
+  });
+  res.status(201).json(successResponse(location, 'Location created'));
+}));
+
+router.patch('/locations/:id', wrap(async (req: any, res: any) => {
+  const { name, description, isActive } = req.body;
+  const location = await prisma.location.update({
+    where: { id: req.params.id },
+    data: {
+      ...(name        !== undefined ? { name: name.trim() }             : {}),
+      ...(description !== undefined ? { description: description?.trim() } : {}),
+      ...(isActive    !== undefined ? { isActive }                       : {}),
+    },
+  });
+  res.json(successResponse(location, 'Location updated'));
+}));
+
+router.delete('/locations/:id', wrap(async (req: any, res: any) => {
+  await prisma.location.update({
+    where: { id: req.params.id },
+    data: { isActive: false },
+  });
+  res.json(successResponse(null, 'Location deactivated'));
 }));
 
 export { router as adminRouter };
