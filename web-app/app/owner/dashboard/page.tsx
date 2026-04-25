@@ -433,21 +433,76 @@ export default function OwnerDashboard() {
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Shared Safaris</h2>
                 <button
-                  onClick={() => {
-                    const date  = prompt('Safari date (YYYY-MM-DD):');
-                    const type  = prompt('Type (Full Day / Morning Half / Afternoon Half):');
-                    const price = prompt('Price per seat (LKR):');
-                    if (date && type && price) {
-                      api.post('/shared-safari/jeeps', { safariDate: date, safariType: type, pricePerSeat: parseFloat(price) })
-                        .then(() => { qc.invalidateQueries({ queryKey: ['owner-jeeps'] }); alert('Safari created!'); })
-                        .catch(() => alert('Failed to create safari'));
-                    }
-                  }}
+                  onClick={() => setShowNewShared(true)}
                   className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                 >
                   + New Safari
                 </button>
               </div>
+              {/* New shared safari modal */}
+              {showNewShared && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                  <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-lg font-bold mb-4">New Shared Safari</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Location *</label>
+                        <select
+                          value={newSharedForm.locationId}
+                          onChange={(e) => setNewSharedForm((p) => ({ ...p, locationId: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                        >
+                          <option value="">Select location...</option>
+                          {me?.safariOwner?.locations?.map((l) => (
+                            <option key={l.location.id} value={l.location.id}>{l.location.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Safari Date *</label>
+                        <input
+                          type="date"
+                          value={newSharedForm.safariDate}
+                          onChange={(e) => setNewSharedForm((p) => ({ ...p, safariDate: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Safari Type *</label>
+                        <select
+                          value={newSharedForm.safariType}
+                          onChange={(e) => setNewSharedForm((p) => ({ ...p, safariType: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                        >
+                          {['Full Day', 'Morning Half', 'Afternoon Half'].map((t) => <option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Price Per Seat (LKR) *</label>
+                        <input
+                          type="number"
+                          placeholder="3500"
+                          value={newSharedForm.pricePerSeat}
+                          onChange={(e) => setNewSharedForm((p) => ({ ...p, pricePerSeat: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 mt-5">
+                      <button onClick={() => setShowNewShared(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                      <button
+                        onClick={handleCreateShared}
+                        disabled={createSharedMutation.isPending}
+                        className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                      >
+                        {createSharedMutation.isPending ? 'Creating...' : 'Create Safari'}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+
               {jeepsData?.map((jeep: any, i: number) => (
                 <motion.div key={jeep.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                   <Card className="hover:shadow-md transition-shadow">

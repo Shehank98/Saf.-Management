@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api.service';
 import { Button } from '../../components/common/Button';
 import { Colors } from '../../theme/colors';
@@ -25,7 +25,15 @@ export function CreatePrivateSafariScreen({ navigation }: Props) {
     safariType: 'Full Day',
     totalAmount: '',
     specialRequests: '',
+    locationId: '',
   });
+
+  const { data: meData } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api.get('/auth/me').then((r) => r.data.data),
+  });
+  const ownerLocations: { id: string; name: string }[] =
+    meData?.safariOwner?.locations?.map((l: any) => l.location) || [];
 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -40,6 +48,7 @@ export function CreatePrivateSafariScreen({ navigation }: Props) {
         customerPhone:  form.customerPhone.trim(),
         customerEmail:  form.customerEmail.trim(),
         specialRequests: form.specialRequests.trim() || undefined,
+        locationId:     form.locationId || undefined,
       };
       const res = await api.post('/private-safari/inquiry', body);
       return res.data.data;
@@ -61,7 +70,8 @@ export function CreatePrivateSafariScreen({ navigation }: Props) {
   const isValid = form.safariDate.match(/^\d{4}-\d{2}-\d{2}$/)
     && parseInt(form.numberOfGuests) > 0
     && parseFloat(form.totalAmount) > 0
-    && form.customerName.trim();
+    && form.customerName.trim()
+    && form.locationId;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,6 +94,29 @@ export function CreatePrivateSafariScreen({ navigation }: Props) {
             <Text style={styles.label}>Email</Text>
             <TextInput style={styles.input} value={form.customerEmail} onChangeText={(v) => set('customerEmail', v)} placeholder="customer@email.com" placeholderTextColor={Colors.gray[400]} keyboardType="email-address" autoCapitalize="none" />
           </View>
+
+          {/* Safari location */}
+          <Text style={styles.section}>Safari Location *</Text>
+          <Text style={styles.subtitle}>Select the national park for this safari</Text>
+          {ownerLocations.length > 0 ? (
+            <View style={styles.locationGrid}>
+              {ownerLocations.map((loc) => {
+                const selected = form.locationId === loc.id;
+                return (
+                  <TouchableOpacity
+                    key={loc.id}
+                    onPress={() => set('locationId', loc.id)}
+                    style={[styles.locationCard, selected && styles.locationCardActive]}
+                  >
+                    {selected && <Text style={styles.locationCheck}>✓ </Text>}
+                    <Text style={[styles.locationName, selected && styles.locationNameActive]}>{loc.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.error}>No locations assigned to your account.</Text>
+          )}
 
           {/* Safari details */}
           <Text style={styles.section}>Safari Details</Text>
@@ -170,4 +203,10 @@ const styles = StyleSheet.create({
   summaryLabel:     { fontSize: 13, color: Colors.gray[500] },
   summaryValue:     { fontSize: 13, fontWeight: '700', color: Colors.gray[800] },
   btn:              { marginBottom: 8 },
+  locationGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  locationCard:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.white },
+  locationCardActive: { borderColor: Colors.primary, backgroundColor: '#F0FDF4' },
+  locationCheck:    { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  locationName:     { fontSize: 13, fontWeight: '600', color: Colors.gray[700] },
+  locationNameActive: { color: Colors.primary },
 });
