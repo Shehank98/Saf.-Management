@@ -48,6 +48,30 @@ export async function getAvailableVendors(vendorType: string) {
   return res.data.data;
 }
 
+export async function getPrivateSafaris(status?: string) {
+  const url = status ? `/private-safari/owner/list?status=${status}` : '/private-safari/owner/list';
+  const res = await api.get(url);
+  return res.data.data;
+}
+
+export async function createPrivateSafari(data: {
+  safariDate: string;
+  safariType: string;
+  numberOfGuests: number;
+  totalAmount: number;
+  customerName?: string;
+  customerPhone?: string;
+  specialRequests?: string;
+}) {
+  const res = await api.post('/private-safari/inquiry', data);
+  return res.data.data;
+}
+
+export async function updatePrivateSafariStatus(safariId: string, status: string) {
+  const res = await api.patch(`/private-safari/${safariId}/status`, { status });
+  return res.data.data;
+}
+
 export async function getOwnerRevenue() {
   const res = await api.get('/owner/revenue');
   return res.data.data;

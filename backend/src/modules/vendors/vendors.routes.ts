@@ -12,6 +12,7 @@ router.use(authenticate, requireRole('VENDOR'));
 router.get('/profile', wrap(ctrl.getProfile));
 router.get('/dashboard', wrap(ctrl.getDashboard));
 router.get('/earnings', wrap(ctrl.getEarnings));
+router.get('/jobs', wrap(ctrl.getJobs));
 router.patch('/availability', wrap(ctrl.updateAvailability));
 router.post('/subscription/pay', wrap(ctrl.paySubscription));
 

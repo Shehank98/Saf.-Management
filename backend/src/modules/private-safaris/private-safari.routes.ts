@@ -9,6 +9,14 @@ const router = Router();
 const wrap = (fn: Function) => (req: any, res: any, next: any) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
+// List owner's private safaris
+router.get('/owner/list', authenticate, requireRole('SAFARI_OWNER'), wrap(async (req: AuthRequest, res: any) => {
+  const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  const safaris = await service.getOwnerSafaris(owner.id, req.query.status as string | undefined);
+  res.json(successResponse(safaris));
+}));
+
 router.post('/inquiry', authenticate, requireRole('SAFARI_OWNER'), wrap(async (req: AuthRequest, res: any) => {
   const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
   if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }

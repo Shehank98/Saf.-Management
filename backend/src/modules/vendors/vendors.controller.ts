@@ -37,6 +37,11 @@ export async function paySubscription(req: AuthRequest, res: Response): Promise<
   res.json(successResponse(updated, 'Subscription payment recorded'));
 }
 
+export async function getJobs(req: AuthRequest, res: Response): Promise<void> {
+  const data = await vendorsService.getVendorJobs(req.user!.userId);
+  res.json(successResponse(data));
+}
+
 export async function listAvailable(req: AuthRequest, res: Response): Promise<void> {
   const { vendorType, date } = req.query;
   const vendors = await vendorsService.listAvailableVendors(

@@ -138,6 +138,46 @@ export async function getEarnings(userId: string, period: 'month' | 'year' | 'al
   return { payments, total };
 }
 
+export async function getVendorJobs(userId: string) {
+  const vendor = await prisma.vendor.findUnique({ where: { userId } });
+  if (!vendor) throw Object.assign(new Error('Vendor not found'), { status: 404 });
+
+  const now = new Date();
+
+  const [jeepJobs, guideJobs] = await Promise.all([
+    prisma.jeepAssignment.findMany({
+      where: {
+        vendorId: vendor.id,
+        OR: [
+          { privateSafari: { safariDate: { gte: now } } },
+          { sharedJeep: { safariDate: { gte: now } } },
+        ],
+      },
+      include: {
+        privateSafari: { include: { booking: { include: { customer: { include: { user: { select: { name: true, phone: true } } } } } } } },
+        sharedJeep: { include: { bookings: { where: { status: { in: ['PAID', 'CONFIRMED'] } } }, owner: { include: { user: { select: { name: true, phone: true } } } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.guideAssignment.findMany({
+      where: {
+        vendorId: vendor.id,
+        OR: [
+          { privateSafari: { safariDate: { gte: now } } },
+          { sharedJeep: { safariDate: { gte: now } } },
+        ],
+      },
+      include: {
+        privateSafari: { include: { booking: { include: { customer: { include: { user: { select: { name: true, phone: true } } } } } } } },
+        sharedJeep: { include: { bookings: { where: { status: { in: ['PAID', 'CONFIRMED'] } } }, owner: { include: { user: { select: { name: true, phone: true } } } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
+
+  return { jeepJobs, guideJobs };
+}
+
 export async function listAvailableVendors(vendorType?: string, date?: Date) {
   return prisma.vendor.findMany({
     where: {
