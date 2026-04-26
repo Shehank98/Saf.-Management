@@ -15,6 +15,7 @@ router.get('/link/:token', wrap(ctrl.getJeepByToken));
 
 // Customer
 router.post('/validate-location', wrap(ctrl.validateLocation));
+router.post('/reserve-guest', wrap(ctrl.reserveGuestSeat));
 router.post('/reserve-seat', authenticate, requireRole('CUSTOMER'), wrap(ctrl.reserveSeat));
 router.post('/payment/confirm/:bookingId', wrap(ctrl.confirmPayment));
 router.get('/conflicts', authenticate, requireRole('CUSTOMER'), wrap(ctrl.checkConflicts));

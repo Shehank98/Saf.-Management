@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { AuthRequest, successResponse, errorResponse } from '../../types';
 import * as service from './shared-safari.service';
 import { isWithinRadius } from '../../utils/geofencing';
@@ -115,4 +116,68 @@ export async function getPaymentTracking(req: AuthRequest, res: Response): Promi
 export async function generateBookingLink(req: AuthRequest, res: Response): Promise<void> {
   const result = await service.generateBookingLink(req.params.jeepId);
   res.json(successResponse(result, 'Booking link generated'));
+}
+
+export async function reserveGuestSeat(req: Request, res: Response): Promise<void> {
+  const {
+    jeepId,
+    seatNumbers,
+    customerName,
+    customerPhone,
+    customerEmail,
+    ...pickupData
+  } = req.body;
+
+  if (!jeepId || !Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+    res.status(400).json(errorResponse('jeepId and seatNumbers[] are required'));
+    return;
+  }
+  if (!customerName || !customerPhone) {
+    res.status(400).json(errorResponse('customerName and customerPhone are required'));
+    return;
+  }
+
+  if (pickupData.pickupLat != null && pickupData.pickupLng != null) {
+    const valid = isWithinRadius(
+      { lat: pickupData.pickupLat, lng: pickupData.pickupLng },
+      BASE_LOCATION,
+      MAX_RADIUS_KM,
+    );
+    if (!valid) {
+      res.status(400).json(errorResponse(`Pickup location is outside the ${MAX_RADIUS_KM}km service radius`));
+      return;
+    }
+  }
+
+  // Find or create guest user+customer by phone
+  let user = await prisma.user.findUnique({ where: { phone: customerPhone } });
+  if (!user) {
+    const randomPass = await bcrypt.hash(Math.random().toString(36), 10);
+    const email = customerEmail || `guest_${customerPhone.replace(/\D/g, '')}@safari.guest`;
+    user = await prisma.user.create({
+      data: {
+        name: customerName,
+        phone: customerPhone,
+        email,
+        password: randomPass,
+        role: 'CUSTOMER',
+        approvalStatus: 'APPROVED',
+      },
+    });
+    await prisma.customer.create({ data: { userId: user.id } });
+  }
+
+  const customer = await prisma.customer.findUnique({ where: { userId: user.id } });
+  if (!customer) {
+    res.status(500).json(errorResponse('Failed to resolve customer profile'));
+    return;
+  }
+
+  const bookings = [];
+  for (const seatNumber of seatNumbers) {
+    const booking = await service.reserveSeat(jeepId, customer.id, seatNumber, pickupData);
+    bookings.push(booking);
+  }
+
+  res.status(201).json(successResponse(bookings, 'Seat(s) reserved. Payment link will be sent when 4 seats are reserved.'));
 }

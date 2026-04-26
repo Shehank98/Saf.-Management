@@ -32,7 +32,7 @@ interface JeepData {
   owner: { companyName: string };
 }
 
-const STEPS = ['Select Seats', 'Pickup Details', 'Extras', 'Confirm'];
+const STEPS = ['Select Seats', 'Your Details', 'Pickup Details', 'Extras', 'Confirm'];
 
 const TAKEN_STATUSES = ['PAID', 'CONFIRMED', 'RESERVED', 'PAYMENT_PENDING'];
 
@@ -48,6 +48,9 @@ export default function BookingSeatPage() {
   const [mealData, setMealData] = useState({
     mealIncluded: false, mealTypes: [] as string[], dietaryReqs: [] as string[], allergies: '',
   });
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [cameraNeeded, setCameraNeeded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingDone, setBookingDone] = useState(false);
@@ -108,18 +111,19 @@ export default function BookingSeatPage() {
     if (!jeep || selectedSeats.length === 0 || !pickupResult?.isValid) return;
     setIsSubmitting(true);
     try {
-      for (const seatNumber of selectedSeats) {
-        await api.post('/shared-safari/reserve-seat', {
-          jeepId: jeep.id,
-          seatNumber,
-          pickupLocation: pickupResult?.address || 'Map pin',
-          pickupLat: pickupResult?.lat,
-          pickupLng: pickupResult?.lng,
-          pickupTime: pickupResult?.time || '5:45 AM',
-          ...mealData,
-          cameraNeeded,
-        });
-      }
+      await api.post('/shared-safari/reserve-guest', {
+        jeepId: jeep.id,
+        seatNumbers: selectedSeats,
+        customerName,
+        customerPhone,
+        customerEmail: customerEmail || undefined,
+        pickupLocation: pickupResult.address || 'Map pin',
+        pickupLat: pickupResult.lat,
+        pickupLng: pickupResult.lng,
+        pickupTime: pickupResult.time || '5:45 AM',
+        ...mealData,
+        cameraNeeded,
+      });
       setBookingDone(true);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
@@ -344,10 +348,76 @@ export default function BookingSeatPage() {
             </motion.div>
           )}
 
-          {/* ======== STEP 1: PICKUP LOCATION ======== */}
+          {/* ======== STEP 1: YOUR DETAILS ======== */}
           {step === 1 && (
             <motion.div
               key="step1"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-2xl shadow-sm border p-5 space-y-4"
+            >
+              <div>
+                <h2 className="font-bold text-gray-900">Your Details</h2>
+                <p className="text-xs text-gray-400 mt-0.5">So the safari operator can confirm your booking via WhatsApp</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="e.g. Kamal Perera"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">WhatsApp Number <span className="text-red-500">*</span></label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="e.g. +94 77 123 4567"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">Payment link will be sent to this number</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="e.g. kamal@example.com"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setStep(0)}
+                  className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors"
+                >
+                  ← Back
+                </button>
+                <button
+                  disabled={!customerName.trim() || !customerPhone.trim()}
+                  onClick={() => setStep(2)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl text-sm transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ======== STEP 2: PICKUP LOCATION ======== */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -364,14 +434,14 @@ export default function BookingSeatPage() {
 
               <div className="flex gap-3 pt-1">
                 <button
-                  onClick={() => setStep(0)}
+                  onClick={() => setStep(1)}
                   className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors"
                 >
                   ← Back
                 </button>
                 <button
                   disabled={!pickupResult?.isValid}
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl text-sm transition-colors"
                 >
                   {pickupResult && !pickupResult.isValid
@@ -384,10 +454,10 @@ export default function BookingSeatPage() {
             </motion.div>
           )}
 
-          {/* ======== STEP 2: EXTRAS ======== */}
-          {step === 2 && (
+          {/* ======== STEP 3: EXTRAS ======== */}
+          {step === 3 && (
             <motion.div
-              key="step2"
+              key="step3"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -414,11 +484,11 @@ export default function BookingSeatPage() {
               </div>
 
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setStep(1)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
                   ← Back
                 </button>
                 <button
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition-colors"
                 >
                   Review →
@@ -427,10 +497,10 @@ export default function BookingSeatPage() {
             </motion.div>
           )}
 
-          {/* ======== STEP 3: CONFIRM ======== */}
-          {step === 3 && (
+          {/* ======== STEP 4: CONFIRM ======== */}
+          {step === 4 && (
             <motion.div
-              key="step3"
+              key="step4"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -443,6 +513,18 @@ export default function BookingSeatPage() {
 
               {/* Summary */}
               <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Your Details</div>
+                <div className="divide-y divide-gray-100 text-sm">
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">Name</span>
+                    <span className="font-medium text-gray-900">{customerName}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">WhatsApp</span>
+                    <span className="font-medium text-gray-900">{customerPhone}</span>
+                  </div>
+                </div>
+
                 <div className="bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Safari</div>
                 <div className="divide-y divide-gray-100 text-sm">
                   <div className="flex justify-between px-4 py-3">
@@ -498,12 +580,13 @@ export default function BookingSeatPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 rounded-xl text-xs text-blue-700 leading-relaxed">
-                After reserving, you'll receive a WhatsApp payment link. Your seats are held for 15 minutes. Safari is confirmed once 4+ seats are paid.
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
+                <p className="font-semibold mb-1">Important Notice</p>
+                <p>Reserving is free — no payment now. Once 4+ seats are reserved, you'll receive a WhatsApp payment link. Safari is confirmed only after payment.</p>
               </div>
 
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                <button onClick={() => setStep(3)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
                   ← Back
                 </button>
                 <button
@@ -513,7 +596,7 @@ export default function BookingSeatPage() {
                 >
                   {isSubmitting
                     ? 'Reserving...'
-                    : `Reserve ${seatCount} Seat${seatCount > 1 ? 's' : ''}`}
+                    : `Reserve ${seatCount} Seat${seatCount > 1 ? 's' : ''} — FREE`}
                 </button>
               </div>
             </motion.div>
