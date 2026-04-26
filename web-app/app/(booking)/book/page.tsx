@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
@@ -13,12 +14,21 @@ interface AvailableDate {
 }
 
 export default function BookingPage() {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const { data: datesData, isLoading } = useQuery<{ data: AvailableDate[] }>({
     queryKey: ['available-dates'],
     queryFn: () => api.get('/shared-safari/available-dates').then((r) => r.data),
+  });
+
+  // Step 3: load available jeeps once date + type chosen
+  const { data: jeepsData, isLoading: jeepsLoading } = useQuery<any[]>({
+    queryKey: ['jeeps-for-date', selectedDate, selectedType],
+    queryFn: () =>
+      api.get(`/shared-safari/jeeps/${selectedDate}/${encodeURIComponent(selectedType!)}`).then((r) => r.data.data),
+    enabled: !!selectedDate && !!selectedType,
   });
 
   const dates: AvailableDate[] = datesData?.data || [];
@@ -67,7 +77,12 @@ export default function BookingPage() {
                         {new Date(d.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {d.safariTypes.reduce((s, t) => s + t.availableSeats, 0)} seats left
+                        {(() => {
+                          const available = d.safariTypes.reduce((s, t) => s + t.availableSeats, 0);
+                          const total = d.safariTypes.length * 6;
+                          const booked = total - available;
+                          return `${booked}/${total} booked`;
+                        })()}
                       </p>
                     </motion.button>
                   );
@@ -111,15 +126,52 @@ export default function BookingPage() {
             </motion.div>
           )}
 
-          {/* CTA */}
+          {/* Step 3 – Pick a jeep */}
           {selectedDate && selectedType && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <Link
-                href={`/book/${encodeURIComponent(selectedDate)}/seats?type=${encodeURIComponent(selectedType)}`}
-                className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-4 rounded-2xl transition-colors text-lg"
-              >
-                Select Your Seat →
-              </Link>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border p-6">
+              <h2 className="font-semibold text-gray-900 mb-4">Select a Jeep</h2>
+              {jeepsLoading && (
+                <div className="space-y-3">
+                  {[...Array(2)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+                </div>
+              )}
+              {!jeepsLoading && (!jeepsData || jeepsData.length === 0) && (
+                <p className="text-gray-500 text-sm">No jeeps available for this date and type.</p>
+              )}
+              {jeepsData?.map((jeep: any) => {
+                const available = jeep.totalSeats - jeep.reservedSeats - jeep.paidSeats;
+                return (
+                  <button
+                    key={jeep.id}
+                    onClick={() => router.push(`/book/${jeep.bookingLinkToken}`)}
+                    className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-green-400 transition-all mb-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {formatCurrency(parseFloat(jeep.pricePerSeat))} / seat
+                        </p>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          {jeep.paidSeats}/{jeep.totalSeats} booked · {available} seat{available !== 1 ? 's' : ''} left
+                        </p>
+                      </div>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                        jeep.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {jeep.status === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
+                      </span>
+                    </div>
+                    {/* Seat bar */}
+                    <div className="flex gap-1 mt-3">
+                      {Array.from({ length: jeep.totalSeats }, (_, i) => {
+                        const b = jeep.bookings?.find((bk: any) => bk.seatNumber === i + 1);
+                        const color = !b ? 'bg-gray-200' : (b.status === 'PAID' || b.status === 'CONFIRMED') ? 'bg-green-500' : 'bg-amber-400';
+                        return <div key={i} className={`h-2 flex-1 rounded-full ${color}`} />;
+                      })}
+                    </div>
+                  </button>
+                );
+              })}
             </motion.div>
           )}
         </motion.div>
