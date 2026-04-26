@@ -137,4 +137,35 @@ router.delete('/locations/:id', wrap(async (req: any, res: any) => {
   res.json(successResponse(null, 'Location deactivated'));
 }));
 
+// Get all safari owners with their assigned locations
+router.get('/owners', wrap(async (_req: any, res: any) => {
+  const owners = await prisma.safariOwner.findMany({
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      locations: { include: { location: { select: { id: true, name: true } } } },
+    },
+    orderBy: { user: { name: 'asc' } },
+  });
+  res.json(successResponse(owners));
+}));
+
+// Replace all location assignments for an owner
+router.put('/owners/:userId/locations', wrap(async (req: any, res: any) => {
+  const { locationIds } = req.body as { locationIds: string[] };
+  const owner = await prisma.safariOwner.findUnique({ where: { userId: req.params.userId } });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+
+  await prisma.$transaction([
+    prisma.safariOwnerLocation.deleteMany({ where: { ownerId: owner.id } }),
+    ...(locationIds.length
+      ? [prisma.safariOwnerLocation.createMany({
+          data: locationIds.map((locationId) => ({ ownerId: owner.id, locationId })),
+          skipDuplicates: true,
+        })]
+      : []),
+  ]);
+
+  res.json(successResponse(null, 'Owner locations updated'));
+}));
+
 export { router as adminRouter };

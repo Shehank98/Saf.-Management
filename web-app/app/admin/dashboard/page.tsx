@@ -85,6 +85,13 @@ export default function AdminDashboard() {
     retry: false,
   });
 
+  const { data: ownersData } = useQuery({
+    queryKey: ['admin-owners'],
+    queryFn: () => api.get('/admin/owners').then((r) => r.data.data),
+    enabled: authed && activeTab === 'Locations',
+    retry: false,
+  });
+
   const approveMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/approve`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-pending-users'] }); qc.invalidateQueries({ queryKey: ['admin-all-users'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
@@ -100,6 +107,12 @@ export default function AdminDashboard() {
     mutationFn: ({ userId, features }: { userId: string; features: { feature: string; enabled: boolean }[] }) =>
       api.patch(`/admin/users/${userId}/features`, { features }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-all-users'] }),
+  });
+
+  const ownerLocationMutation = useMutation({
+    mutationFn: ({ userId, locationIds }: { userId: string; locationIds: string[] }) =>
+      api.put(`/admin/owners/${userId}/locations`, { locationIds }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-owners'] }),
   });
 
   const createLocMutation = useMutation({
@@ -554,6 +567,71 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Owner location assignments */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Owner Operating Locations</CardTitle></CardHeader>
+              <CardContent>
+                {!ownersData?.length ? (
+                  <p className="text-gray-400 text-sm py-4 text-center">No approved owners yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {ownersData.map((owner: any) => {
+                      const assigned = owner.locations.map((l: any) => l.location.id) as string[];
+                      return (
+                        <div key={owner.id} className="border rounded-xl p-4">
+                          <p className="font-semibold text-sm text-gray-900 mb-1">{owner.user?.name}</p>
+                          <p className="text-xs text-gray-400 mb-3">{owner.companyName}</p>
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {owner.locations.length === 0 && (
+                              <span className="text-xs text-red-500 italic">No locations assigned</span>
+                            )}
+                            {owner.locations.map((l: any) => (
+                              <span
+                                key={l.location.id}
+                                className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full"
+                              >
+                                📍 {l.location.name}
+                                <button
+                                  onClick={() => ownerLocationMutation.mutate({
+                                    userId: owner.user.id,
+                                    locationIds: assigned.filter((id) => id !== l.location.id),
+                                  })}
+                                  className="ml-1 text-green-600 hover:text-red-600 font-bold leading-none"
+                                  title="Remove"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <select
+                              defaultValue=""
+                              onChange={(e) => {
+                                if (!e.target.value) return;
+                                if (assigned.includes(e.target.value)) return;
+                                ownerLocationMutation.mutate({
+                                  userId: owner.user.id,
+                                  locationIds: [...assigned, e.target.value],
+                                });
+                                e.target.value = '';
+                              }}
+                              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                            >
+                              <option value="">+ Add a location...</option>
+                              {locationsData?.filter((l: any) => l.isActive && !assigned.includes(l.id)).map((l: any) => (
+                                <option key={l.id} value={l.id}>{l.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
