@@ -230,6 +230,11 @@ model PrivateSafari {
   numberOfGuests Int
   status         PrivateSafariStatus @default(INQUIRY)
 
+  customerName  String?
+  customerPhone String?
+  customerEmail String?
+  specialRequests String?
+
   totalAmount   Decimal
   depositAmount Decimal
   depositPaid   Boolean @default(false)

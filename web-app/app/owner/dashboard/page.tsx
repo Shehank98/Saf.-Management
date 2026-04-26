@@ -42,7 +42,7 @@ export default function OwnerDashboard() {
   const [showNewPrivate, setShowNewPrivate] = useState(false);
   const [newPrivateForm, setNewPrivateForm] = useState({
     safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '',
-    customerName: '', customerPhone: '', locationId: '',
+    customerName: '', customerPhone: '', customerEmail: '', specialRequests: '', locationId: '',
   });
   const [showNewShared, setShowNewShared] = useState(false);
   const [newSharedForm, setNewSharedForm] = useState({ safariDate: '', safariType: 'Full Day', pricePerSeat: '', locationId: '' });
@@ -85,7 +85,7 @@ export default function OwnerDashboard() {
       qc.invalidateQueries({ queryKey: ['owner-private-safaris'] });
       qc.invalidateQueries({ queryKey: ['owner-dashboard'] });
       setShowNewPrivate(false);
-      setNewPrivateForm({ safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '', customerName: '', customerPhone: '', locationId: '' });
+      setNewPrivateForm({ safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '', customerName: '', customerPhone: '', customerEmail: '', specialRequests: '', locationId: '' });
     },
   });
 
@@ -126,11 +126,13 @@ export default function OwnerDashboard() {
     }
     createPrivateMutation.mutate({
       safariDate,
-      safariType:     newPrivateForm.safariType,
-      numberOfGuests: parseInt(numberOfGuests),
-      totalAmount:    parseFloat(totalAmount),
-      customerName:   customerName.trim(),
-      customerPhone:  newPrivateForm.customerPhone.trim() || undefined,
+      safariType:      newPrivateForm.safariType,
+      numberOfGuests:  parseInt(numberOfGuests),
+      totalAmount:     parseFloat(totalAmount),
+      customerName:    customerName.trim(),
+      customerPhone:   newPrivateForm.customerPhone.trim() || undefined,
+      customerEmail:   newPrivateForm.customerEmail.trim() || undefined,
+      specialRequests: newPrivateForm.specialRequests.trim() || undefined,
       locationId,
     });
   };
@@ -277,78 +279,219 @@ export default function OwnerDashboard() {
 
           {/* ========== PRIVATE SAFARIS ========== */}
           {tab === 'private' && has('PRIVATE_SAFARI') && (
-            <motion.div key="private" {...fadeIn} className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Private Safaris</h2>
+            <motion.div key="private" {...fadeIn} className="space-y-5">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Private Safaris</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Manage your manual customer bookings</p>
+                </div>
                 <button
                   onClick={() => setShowNewPrivate(true)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-all hover:shadow-md"
                 >
-                  + New Booking
+                  <span className="text-base leading-none">+</span> New Booking
                 </button>
               </div>
 
-              {/* New private safari modal */}
+              {/* New booking modal */}
               {showNewPrivate && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                  <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-lg font-bold mb-4">New Private Safari Booking</h3>
-                    <div className="space-y-3">
-                      {[
-                        { label: 'Customer Name *', key: 'customerName', type: 'text', placeholder: 'John Silva' },
-                        { label: 'Customer Phone', key: 'customerPhone', type: 'tel', placeholder: '+94771234567' },
-                        { label: 'Safari Date *', key: 'safariDate', type: 'date', placeholder: '' },
-                        { label: 'Guests *', key: 'numberOfGuests', type: 'number', placeholder: '4' },
-                        { label: 'Total Price (LKR) *', key: 'totalAmount', type: 'number', placeholder: '50000' },
-                      ].map((f) => (
-                        <div key={f.key}>
-                          <label className="text-sm font-medium text-gray-700">{f.label}</label>
-                          <input
-                            type={f.type}
-                            placeholder={f.placeholder}
-                            value={(newPrivateForm as any)[f.key]}
-                            onChange={(e) => setNewPrivateForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                            className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
-                          />
-                        </div>
-                      ))}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                  onClick={(e) => e.target === e.currentTarget && setShowNewPrivate(false)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.94, opacity: 0, y: 16 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.94, opacity: 0, y: 16 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                    className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto"
+                  >
+                    {/* Modal header */}
+                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Location *</label>
-                        <select
-                          value={newPrivateForm.locationId}
-                          onChange={(e) => setNewPrivateForm((p) => ({ ...p, locationId: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
-                        >
-                          <option value="">Select location...</option>
-                          {me?.safariOwner?.locations?.map((l) => (
-                            <option key={l.location.id} value={l.location.id}>{l.location.name}</option>
-                          ))}
-                        </select>
+                        <h3 className="text-lg font-bold text-gray-900">New Private Safari Booking</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Fill in the customer and safari details</p>
                       </div>
+                      <button
+                        onClick={() => setShowNewPrivate(false)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div className="px-6 py-5 space-y-5">
+                      {/* Customer Info section */}
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Safari Type *</label>
-                        <select
-                          value={newPrivateForm.safariType}
-                          onChange={(e) => setNewPrivateForm((p) => ({ ...p, safariType: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
-                        >
-                          {['Full Day', 'Morning Half', 'Afternoon Half'].map((t) => <option key={t}>{t}</option>)}
-                        </select>
+                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Customer Information</p>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Customer Name <span className="text-red-500">*</span></label>
+                            <input
+                              type="text"
+                              placeholder="e.g. John Silva"
+                              value={newPrivateForm.customerName}
+                              onChange={(e) => setNewPrivateForm((p) => ({ ...p, customerName: e.target.value }))}
+                              className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                              <input
+                                type="tel"
+                                placeholder="+94771234567"
+                                value={newPrivateForm.customerPhone}
+                                onChange={(e) => setNewPrivateForm((p) => ({ ...p, customerPhone: e.target.value }))}
+                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700">Email Address</label>
+                              <input
+                                type="email"
+                                placeholder="john@example.com"
+                                value={newPrivateForm.customerEmail}
+                                onChange={(e) => setNewPrivateForm((p) => ({ ...p, customerEmail: e.target.value }))}
+                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      {newPrivateForm.totalAmount && (
-                        <div className="bg-amber-50 rounded-lg p-3 text-sm">
-                          <p className="font-medium text-amber-800">30% deposit: {formatCurrency(parseFloat(newPrivateForm.totalAmount) * 0.3)}</p>
+                      {/* Safari Details section */}
+                      <div>
+                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Safari Details</p>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700">Safari Date <span className="text-red-500">*</span></label>
+                              <input
+                                type="date"
+                                value={newPrivateForm.safariDate}
+                                onChange={(e) => setNewPrivateForm((p) => ({ ...p, safariDate: e.target.value }))}
+                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700">No. of Guests <span className="text-red-500">*</span></label>
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="e.g. 4"
+                                value={newPrivateForm.numberOfGuests}
+                                onChange={(e) => setNewPrivateForm((p) => ({ ...p, numberOfGuests: e.target.value }))}
+                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Safari Location <span className="text-red-500">*</span></label>
+                            <select
+                              value={newPrivateForm.locationId}
+                              onChange={(e) => setNewPrivateForm((p) => ({ ...p, locationId: e.target.value }))}
+                              className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                            >
+                              <option value="">Select a location...</option>
+                              {me?.safariOwner?.locations?.map((l) => (
+                                <option key={l.location.id} value={l.location.id}>{l.location.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-1.5 block">Safari Type <span className="text-red-500">*</span></label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                { value: 'Full Day', label: 'Full Day', icon: '🌅' },
+                                { value: 'Half Day Morning', label: 'Half Day Morning', icon: '🌄' },
+                                { value: 'Half Day Afternoon', label: 'Half Day Afternoon', icon: '🌇' },
+                              ].map((t) => (
+                                <button
+                                  key={t.value}
+                                  type="button"
+                                  onClick={() => setNewPrivateForm((p) => ({ ...p, safariType: t.value }))}
+                                  className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-xs font-medium transition-all ${
+                                    newPrivateForm.safariType === t.value
+                                      ? 'border-amber-500 bg-amber-50 text-amber-800'
+                                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-amber-300 hover:bg-amber-50/50'
+                                  }`}
+                                >
+                                  <span className="text-xl">{t.icon}</span>
+                                  <span className="text-center leading-tight">{t.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Pricing section */}
+                      <div>
+                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Pricing</p>
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Total Package Price (LKR) <span className="text-red-500">*</span></label>
+                          <div className="relative mt-1.5">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">LKR</span>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="50,000"
+                              value={newPrivateForm.totalAmount}
+                              onChange={(e) => setNewPrivateForm((p) => ({ ...p, totalAmount: e.target.value }))}
+                              className="block w-full border border-gray-200 bg-gray-50 rounded-xl pl-14 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                            />
+                          </div>
+                          {newPrivateForm.totalAmount && parseFloat(newPrivateForm.totalAmount) > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="mt-2.5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
+                            >
+                              <span className="text-xl">💰</span>
+                              <div>
+                                <p className="text-xs text-amber-600 font-medium">30% Deposit Required</p>
+                                <p className="text-base font-bold text-amber-800">{formatCurrency(parseFloat(newPrivateForm.totalAmount) * 0.3)}</p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Special Requests */}
+                      <div>
+                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Additional Details</p>
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Special Requests</label>
+                          <textarea
+                            rows={3}
+                            placeholder="Any special requirements, dietary needs, accessibility needs..."
+                            value={newPrivateForm.specialRequests}
+                            onChange={(e) => setNewPrivateForm((p) => ({ ...p, specialRequests: e.target.value }))}
+                            className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all resize-none"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-3 mt-5">
-                      <button onClick={() => setShowNewPrivate(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+
+                    {/* Modal footer */}
+                    <div className="flex gap-3 px-6 pb-6 pt-2">
+                      <button
+                        onClick={() => setShowNewPrivate(false)}
+                        className="flex-1 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
                       <button
                         onClick={handleCreatePrivate}
                         disabled={createPrivateMutation.isPending}
-                        className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                        className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold shadow-sm disabled:opacity-50 transition-all hover:shadow-md"
                       >
                         {createPrivateMutation.isPending ? 'Creating...' : 'Create Booking'}
                       </button>
@@ -357,66 +500,125 @@ export default function OwnerDashboard() {
                 </motion.div>
               )}
 
+              {/* Loading */}
               {privateLoading && (
-                <div className="text-center py-12 text-gray-400">Loading safaris...</div>
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-8 h-8 border-3 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
+                  <p className="text-sm text-gray-400">Loading safaris...</p>
+                </div>
               )}
 
+              {/* Empty state */}
               {!privateLoading && privateSafaris?.length === 0 && (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="text-4xl mb-3">👑</div>
-                    <p className="font-semibold text-gray-700">No Private Safaris Yet</p>
-                    <p className="text-gray-400 text-sm mt-1">Create your first private safari booking above.</p>
-                  </CardContent>
-                </Card>
+                <motion.div {...fadeIn}>
+                  <Card>
+                    <CardContent className="py-16 text-center">
+                      <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
+                        👑
+                      </div>
+                      <p className="font-semibold text-gray-800 text-base">No Private Safaris Yet</p>
+                      <p className="text-gray-400 text-sm mt-1.5 max-w-xs mx-auto">
+                        When customers contact you via WhatsApp, phone, or email — create their booking here.
+                      </p>
+                      <button
+                        onClick={() => setShowNewPrivate(true)}
+                        className="mt-5 inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all"
+                      >
+                        + Create First Booking
+                      </button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               )}
 
+              {/* Safari cards */}
               {privateSafaris?.map((safari: any, i: number) => {
                 const customer = safari.booking?.customer?.user;
+                const displayName = safari.customerName || customer?.name;
+                const displayPhone = safari.customerPhone || customer?.phone;
+                const displayEmail = safari.customerEmail || customer?.email;
                 const statusClass = STATUS_COLORS[safari.status] || 'bg-gray-50 text-gray-700 border-gray-200';
                 const next = nextStatus[safari.status];
                 return (
                   <motion.div key={safari.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                    <Card className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <p className="font-semibold text-gray-900">{safari.safariType}</p>
-                            <p className="text-sm text-gray-500">{formatShortDate(safari.safariDate)}</p>
-                            {customer && <p className="text-sm text-gray-600 mt-1">👤 {customer.name}</p>}
+                    <Card className="hover:shadow-lg transition-all duration-200 border border-gray-100">
+                      <CardContent className="p-5">
+                        {/* Card header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
+                              {safari.safariType === 'Full Day' ? '🌅' : safari.safariType === 'Half Day Morning' ? '🌄' : '🌇'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900">{safari.safariType}</p>
+                              <p className="text-sm text-gray-500">{formatShortDate(safari.safariDate)}</p>
+                              {safari.location && <p className="text-xs text-gray-400 mt-0.5">📍 {safari.location.name}</p>}
+                            </div>
                           </div>
-                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${statusClass}`}>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusClass}`}>
                             {safari.status.replace(/_/g, ' ')}
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3 mb-3 bg-gray-50 rounded-xl p-3">
-                          <div className="text-center">
-                            <p className="text-xs text-gray-400">Guests</p>
-                            <p className="font-bold text-gray-900">{safari.numberOfGuests}</p>
+                        {/* Customer info */}
+                        {(displayName || displayPhone || displayEmail) && (
+                          <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-1.5">
+                            {displayName && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-400 w-4 text-center">👤</span>
+                                <span className="font-medium text-gray-800">{displayName}</span>
+                              </div>
+                            )}
+                            {displayPhone && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-400 w-4 text-center">📞</span>
+                                <span className="text-gray-600">{displayPhone}</span>
+                              </div>
+                            )}
+                            {displayEmail && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-400 w-4 text-center">✉️</span>
+                                <span className="text-gray-600">{displayEmail}</span>
+                              </div>
+                            )}
+                            {safari.specialRequests && (
+                              <div className="flex items-start gap-2 text-sm pt-1 border-t border-gray-200 mt-1">
+                                <span className="text-gray-400 w-4 text-center mt-0.5">📝</span>
+                                <span className="text-gray-500 italic text-xs">{safari.specialRequests}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="text-center border-x border-gray-200">
-                            <p className="text-xs text-gray-400">Total</p>
-                            <p className="font-bold text-green-700">{formatCurrency(parseFloat(safari.totalAmount))}</p>
+                        )}
+
+                        {/* Stats row */}
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                          <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-0.5">Guests</p>
+                            <p className="font-bold text-gray-900 text-lg">{safari.numberOfGuests}</p>
                           </div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-400">Deposit</p>
-                            <p className={`font-bold ${safari.depositPaid ? 'text-green-600' : 'text-amber-600'}`}>
-                              {safari.depositPaid ? '✓ Paid' : '⏳ Pending'}
+                          <div className="bg-green-50 rounded-xl p-3 text-center">
+                            <p className="text-xs text-gray-400 mb-0.5">Total</p>
+                            <p className="font-bold text-green-700 text-base">{formatCurrency(parseFloat(safari.totalAmount))}</p>
+                          </div>
+                          <div className={`${safari.depositPaid ? 'bg-emerald-50' : 'bg-amber-50'} rounded-xl p-3 text-center`}>
+                            <p className="text-xs text-gray-400 mb-0.5">Deposit</p>
+                            <p className={`font-bold text-sm ${safari.depositPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                              {safari.depositPaid ? '✓ Paid' : '⏳ Due'}
                             </p>
                           </div>
                         </div>
 
+                        {/* Action button */}
                         {next && (
                           <button
                             onClick={() => statusMutation.mutate({ id: safari.id, status: next })}
                             disabled={statusMutation.isPending}
-                            className="w-full text-sm font-medium py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors disabled:opacity-50"
+                            className="w-full text-sm font-semibold py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all hover:shadow-md disabled:opacity-50"
                           >
-                            {next === 'DEPOSIT_PENDING' ? 'Request Deposit' :
-                             next === 'DEPOSIT_PAID'    ? 'Mark Deposit Paid' :
-                             next === 'CONFIRMED'       ? 'Confirm Safari' :
-                             'Mark Completed'}
+                            {next === 'DEPOSIT_PENDING' ? '📩 Request Deposit' :
+                             next === 'DEPOSIT_PAID'    ? '✅ Mark Deposit Paid' :
+                             next === 'CONFIRMED'       ? '🎉 Confirm Safari' :
+                             '🏁 Mark Completed'}
                           </button>
                         )}
                       </CardContent>

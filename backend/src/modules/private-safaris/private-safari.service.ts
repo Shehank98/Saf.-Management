@@ -7,6 +7,10 @@ export async function createInquiry(ownerId: string, data: {
   totalAmount: number;
   depositPercentage?: number;
   locationId: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  specialRequests?: string;
 }) {
   const depositPct = data.depositPercentage || 30;
   const depositAmount = (data.totalAmount * depositPct) / 100;
@@ -30,6 +34,10 @@ export async function createInquiry(ownerId: string, data: {
       depositAmount,
       status: 'INQUIRY',
       locationId: data.locationId || null,
+      customerName: data.customerName || null,
+      customerPhone: data.customerPhone || null,
+      customerEmail: data.customerEmail || null,
+      specialRequests: data.specialRequests || null,
     },
   });
 }
@@ -102,7 +110,7 @@ export async function getOwnerSafaris(ownerId: string, status?: string) {
       ...(status ? { status: status as any } : {}),
     },
     include: {
-      booking: { include: { customer: { include: { user: { select: { name: true } } } } } },
+      booking: { include: { customer: { include: { user: { select: { name: true, phone: true, email: true } } } } } },
       location: { select: { id: true, name: true } },
     },
     orderBy: { safariDate: 'desc' },
