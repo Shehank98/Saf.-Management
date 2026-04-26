@@ -85,8 +85,6 @@ export default function AdminDashboard() {
     retry: false,
   });
 
-  if (!authed) return null;
-
   const approveMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/approve`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-pending-users'] }); qc.invalidateQueries({ queryKey: ['admin-all-users'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); },
@@ -146,6 +144,8 @@ export default function AdminDashboard() {
     };
     return `text-xs px-2 py-0.5 rounded-full font-medium ${map[status] || 'bg-gray-100 text-gray-700'}`;
   };
+
+  if (!authed) return null;
 
   return (
     <main className="min-h-screen bg-gray-50">
