@@ -46,6 +46,18 @@ export default function OwnerDashboard() {
   });
   const [showNewShared, setShowNewShared] = useState(false);
   const [newSharedForm, setNewSharedForm] = useState({ safariDate: '', safariType: 'Full Day', pricePerSeat: '', locationId: '' });
+
+  // Vendor assignment state
+  const [vendorAssignSafari, setVendorAssignSafari] = useState<any>(null);
+  const [vendorTab, setVendorTab] = useState<string>('JEEP_PROVIDER');
+  const [vendorForm, setVendorForm] = useState({
+    jeepVendorId: '', jeepNumber: '', rentalFee: '',
+    guideVendorId: '', guideFee: '',
+    restaurantVendorId: '', mealCost: '', numberOfMeals: '1',
+    accommodationVendorId: '', accommodationCost: '',
+    cameraVendorId: '', cameraCost: '',
+  });
+
   const qc = useQueryClient();
   useEffect(() => setMounted(true), []);
 
@@ -83,6 +95,25 @@ export default function OwnerDashboard() {
     queryKey: ['owner-vendor-payments'],
     queryFn: () => api.get('/owner/vendor-payments').then((r) => r.data.data),
     enabled: tab === 'vendors',
+  });
+
+  const { data: availableVendors = [] } = useQuery<any[]>({
+    queryKey: ['available-vendors', vendorAssignSafari?.safariDate],
+    queryFn: () =>
+      api.get('/vendors/available', {
+        params: { date: vendorAssignSafari?.safariDate },
+      }).then((r) => r.data.data),
+    enabled: !!vendorAssignSafari,
+  });
+
+  const assignVendorMutation = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: any }) =>
+      api.patch(`/private-safari/${id}/assign-vendors`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner-private-safaris'] });
+      setVendorAssignSafari(null);
+      setVendorForm({ jeepVendorId: '', jeepNumber: '', rentalFee: '', guideVendorId: '', guideFee: '', restaurantVendorId: '', mealCost: '', numberOfMeals: '1', accommodationVendorId: '', accommodationCost: '', cameraVendorId: '', cameraCost: '' });
+    },
   });
 
   const createPrivateMutation = useMutation({
@@ -632,6 +663,70 @@ export default function OwnerDashboard() {
                           </a>
                         )}
 
+                        {/* Assigned vendors summary */}
+                        {(safari.jeepAssignment || safari.guideAssignment || safari.mealOrders?.length > 0) && (
+                          <div className="border border-gray-200 rounded-xl p-3 mb-3 space-y-1.5">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Assigned Vendors</p>
+                            {safari.jeepAssignment && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">🚙 Jeep — {safari.jeepAssignment.vendor?.user?.name} ({safari.jeepAssignment.jeepNumber})</span>
+                                <span className="font-medium">{formatCurrency(parseFloat(safari.jeepAssignment.rentalFee))}</span>
+                              </div>
+                            )}
+                            {safari.guideAssignment && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">🧭 Guide — {safari.guideAssignment.vendor?.user?.name}</span>
+                                <span className="font-medium">{formatCurrency(parseFloat(safari.guideAssignment.guideFee))}</span>
+                              </div>
+                            )}
+                            {safari.mealOrders?.map((m: any) => (
+                              <div key={m.id} className="flex justify-between text-sm">
+                                <span className="text-gray-600">🍽️ Meals — {m.vendor?.user?.name}</span>
+                                <span className="font-medium">{formatCurrency(parseFloat(m.totalCost))}</span>
+                              </div>
+                            ))}
+                            {parseFloat(safari.vendorCosts) > 0 && (
+                              <div className="flex justify-between text-sm pt-1.5 border-t border-gray-200 mt-1">
+                                <span className="text-gray-500">Vendor costs</span>
+                                <span className="font-semibold text-red-600">− {formatCurrency(parseFloat(safari.vendorCosts))}</span>
+                              </div>
+                            )}
+                            {parseFloat(safari.vendorCosts) > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-700 font-medium">Net profit</span>
+                                <span className="font-bold text-green-700">{formatCurrency(parseFloat(safari.profit))}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Assign vendors button — available from DEPOSIT_PAID onward */}
+                        {['DEPOSIT_PAID', 'CONFIRMED', 'DEPOSIT_PENDING'].includes(safari.status) && (
+                          <button
+                            onClick={() => {
+                              setVendorAssignSafari(safari);
+                              setVendorTab('JEEP_PROVIDER');
+                              setVendorForm({
+                                jeepVendorId: safari.jeepAssignment?.vendorId || '',
+                                jeepNumber: safari.jeepAssignment?.jeepNumber || '',
+                                rentalFee: safari.jeepAssignment?.rentalFee?.toString() || '',
+                                guideVendorId: safari.guideAssignment?.vendorId || '',
+                                guideFee: safari.guideAssignment?.guideFee?.toString() || '',
+                                restaurantVendorId: safari.mealOrders?.[0]?.vendorId || '',
+                                mealCost: safari.mealOrders?.[0]?.totalCost?.toString() || '',
+                                numberOfMeals: safari.mealOrders?.[0]?.numberOfMeals?.toString() || '1',
+                                accommodationVendorId: safari.accommodationId || '',
+                                accommodationCost: '',
+                                cameraVendorId: '',
+                                cameraCost: '',
+                              });
+                            }}
+                            className="w-full mb-2 py-2 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold hover:bg-amber-50 transition-colors"
+                          >
+                            🏷️ {safari.jeepAssignment || safari.guideAssignment ? 'Edit Vendor Assignments' : 'Assign Vendors'}
+                          </button>
+                        )}
+
                         {/* Action button */}
                         {next && (
                           <button
@@ -650,6 +745,164 @@ export default function OwnerDashboard() {
                   </motion.div>
                 );
               })}
+            </motion.div>
+          )}
+
+          {/* ========== VENDOR ASSIGNMENT MODAL ========== */}
+          {vendorAssignSafari && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+              onClick={(e) => e.target === e.currentTarget && setVendorAssignSafari(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b">
+                  <div>
+                    <p className="font-bold text-gray-900">Assign Vendors</p>
+                    <p className="text-xs text-gray-400">{vendorAssignSafari.safariType} · {formatShortDate(vendorAssignSafari.safariDate)}</p>
+                  </div>
+                  <button onClick={() => setVendorAssignSafari(null)} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+                </div>
+
+                {/* Vendor type tabs */}
+                <div className="flex border-b overflow-x-auto">
+                  {[
+                    { key: 'JEEP_PROVIDER',  label: '🚙 Jeep' },
+                    { key: 'GUIDE',          label: '🧭 Guide' },
+                    { key: 'RESTAURANT',     label: '🍽️ Meals' },
+                    { key: 'ACCOMMODATION',  label: '🏨 Stay' },
+                    { key: 'CAMERA_RENTAL',  label: '📷 Camera' },
+                  ].map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setVendorTab(t.key)}
+                      className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                        vendorTab === t.key ? 'border-amber-500 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="px-6 py-4 space-y-3">
+                  {/* Filter vendors by current tab type */}
+                  {(() => {
+                    const typeVendors = availableVendors.filter((v: any) => v.vendorType === vendorTab);
+
+                    const VendorSelect = ({ fieldKey, label }: { fieldKey: string; label: string }) => (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">{label}</label>
+                        <select
+                          value={(vendorForm as any)[fieldKey]}
+                          onChange={(e) => setVendorForm((p) => ({ ...p, [fieldKey]: e.target.value }))}
+                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                        >
+                          <option value="">Select vendor...</option>
+                          {typeVendors.map((v: any) => (
+                            <option key={v.id} value={v.id}>
+                              {v.user?.name} {v.averageRating ? `· ★${v.averageRating}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {typeVendors.length === 0 && (
+                          <p className="text-xs text-gray-400 mt-1">No available vendors for this date and location.</p>
+                        )}
+                      </div>
+                    );
+
+                    const CostInput = ({ fieldKey, label, placeholder = '0' }: { fieldKey: string; label: string; placeholder?: string }) => (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">{label}</label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">LKR</span>
+                          <input
+                            type="number" min="0" placeholder={placeholder}
+                            value={(vendorForm as any)[fieldKey]}
+                            onChange={(e) => setVendorForm((p) => ({ ...p, [fieldKey]: e.target.value }))}
+                            className="block w-full border border-gray-300 rounded-lg pl-12 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                          />
+                        </div>
+                      </div>
+                    );
+
+                    if (vendorTab === 'JEEP_PROVIDER') return (
+                      <>
+                        <VendorSelect fieldKey="jeepVendorId" label="Jeep Provider" />
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Jeep / Vehicle Number</label>
+                          <input
+                            type="text" placeholder="e.g. WP-CAR-1234"
+                            value={vendorForm.jeepNumber}
+                            onChange={(e) => setVendorForm((p) => ({ ...p, jeepNumber: e.target.value }))}
+                            className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                          />
+                        </div>
+                        <CostInput fieldKey="rentalFee" label="Rental Fee (LKR)" placeholder="15000" />
+                      </>
+                    );
+
+                    if (vendorTab === 'GUIDE') return (
+                      <>
+                        <VendorSelect fieldKey="guideVendorId" label="Safari Guide" />
+                        <CostInput fieldKey="guideFee" label="Guide Fee (LKR)" placeholder="8000" />
+                      </>
+                    );
+
+                    if (vendorTab === 'RESTAURANT') return (
+                      <>
+                        <VendorSelect fieldKey="restaurantVendorId" label="Restaurant / Meals" />
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Number of Meals</label>
+                          <input
+                            type="number" min="1"
+                            value={vendorForm.numberOfMeals}
+                            onChange={(e) => setVendorForm((p) => ({ ...p, numberOfMeals: e.target.value }))}
+                            className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                          />
+                        </div>
+                        <CostInput fieldKey="mealCost" label="Total Meal Cost (LKR)" placeholder="5000" />
+                      </>
+                    );
+
+                    if (vendorTab === 'ACCOMMODATION') return (
+                      <>
+                        <VendorSelect fieldKey="accommodationVendorId" label="Accommodation" />
+                        <CostInput fieldKey="accommodationCost" label="Accommodation Cost (LKR)" placeholder="12000" />
+                      </>
+                    );
+
+                    if (vendorTab === 'CAMERA_RENTAL') return (
+                      <>
+                        <VendorSelect fieldKey="cameraVendorId" label="Camera Rental" />
+                        <CostInput fieldKey="cameraCost" label="Camera Rental Cost (LKR)" placeholder="3000" />
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex gap-3 px-6 pb-6">
+                  <button onClick={() => setVendorAssignSafari(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                  <button
+                    onClick={() => {
+                      const body: any = {};
+                      if (vendorForm.jeepVendorId)          { body.jeepVendorId = vendorForm.jeepVendorId; body.jeepNumber = vendorForm.jeepNumber; body.rentalFee = parseFloat(vendorForm.rentalFee) || 0; }
+                      if (vendorForm.guideVendorId)         { body.guideVendorId = vendorForm.guideVendorId; body.guideFee = parseFloat(vendorForm.guideFee) || 0; }
+                      if (vendorForm.restaurantVendorId)    { body.restaurantVendorId = vendorForm.restaurantVendorId; body.mealCost = parseFloat(vendorForm.mealCost) || 0; body.numberOfMeals = parseInt(vendorForm.numberOfMeals) || 1; }
+                      if (vendorForm.accommodationVendorId) { body.accommodationVendorId = vendorForm.accommodationVendorId; body.accommodationCost = parseFloat(vendorForm.accommodationCost) || 0; }
+                      if (vendorForm.cameraVendorId)        { body.cameraVendorId = vendorForm.cameraVendorId; body.cameraCost = parseFloat(vendorForm.cameraCost) || 0; }
+                      assignVendorMutation.mutate({ id: vendorAssignSafari.id, body });
+                    }}
+                    disabled={assignVendorMutation.isPending}
+                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {assignVendorMutation.isPending ? 'Saving...' : 'Save Assignments'}
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
 
