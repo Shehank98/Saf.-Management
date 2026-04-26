@@ -3,6 +3,7 @@ import { addHours } from '../../utils/date-helpers';
 import { sendWhatsApp } from '../notifications/whatsapp.service';
 import { logger } from '../../utils/logger';
 import { randomBytes } from 'crypto';
+import { onFourthSeatReserved, onAdditionalSeatReserved } from '../../lib/triggers/fourthSeatTrigger';
 
 const MIN_SEATS = 4;
 const MAX_SEATS = 6;
@@ -132,81 +133,24 @@ export async function reserveSeat(
     return newBooking;
   });
 
-  // When 4th seat is reserved: trigger payment links for all, create new jeep
+  // Kick off async triggers without blocking the HTTP response
   if (newReservedCount === MIN_SEATS) {
-    setImmediate(() => {
-      triggerPaymentLinksForJeep(jeepId).catch((err) =>
-        logger.error(`Failed to trigger payment links for jeep ${jeepId}:`, err)
-      );
-      autoCreateJeep(jeep).catch((err) =>
-        logger.error(`Failed to auto-create jeep for ${jeepId}:`, err)
-      );
-    });
+    // 4th seat: trigger payment links for all customers + notify owner + create overflow jeep
+    setImmediate(() =>
+      onFourthSeatReserved(jeepId).catch((err) =>
+        logger.error(`4th-seat trigger failed for jeep ${jeepId}:`, err)
+      )
+    );
+  } else if (jeep.status === 'PENDING_PAYMENT') {
+    // 5th or 6th seat on a jeep already in payment phase — send link immediately
+    setImmediate(() =>
+      onAdditionalSeatReserved(jeepId, booking.id).catch((err) =>
+        logger.error(`Additional-seat trigger failed for booking ${booking.id}:`, err)
+      )
+    );
   }
 
   return booking;
-}
-
-async function triggerPaymentLinksForJeep(jeepId: string): Promise<void> {
-  const deadline = addHours(new Date(), 24);
-
-  const bookings = await prisma.sharedSafariBooking.findMany({
-    where: { jeepId, status: 'RESERVED' },
-    include: {
-      customer: { include: { user: true } },
-      jeep: true,
-    },
-  });
-
-  if (bookings.length < MIN_SEATS) return;
-
-  // Mark jeep as PENDING_PAYMENT and set deadline
-  await prisma.sharedJeep.update({
-    where: { id: jeepId },
-    data: { status: 'PENDING_PAYMENT', paymentDeadline: deadline },
-  });
-
-  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app.up.railway.app';
-
-  for (const booking of bookings) {
-    const paymentLink = `${webAppUrl}/pay/${booking.id}`;
-
-    await prisma.sharedSafariBooking.update({
-      where: { id: booking.id },
-      data: {
-        status: 'PAYMENT_PENDING',
-        paymentDeadline: deadline,
-        paymentLinkSent: new Date(),
-      },
-    });
-
-    await sendWhatsApp({
-      to: booking.customer.user.phone,
-      template: 'payment_request',
-      recipientId: booking.customer.userId,
-      data: {
-        date: booking.jeep.safariDate.toDateString(),
-        amount: booking.totalAmount,
-        deadline: deadline.toLocaleString('en-US', { timeZone: 'Asia/Colombo', dateStyle: 'medium', timeStyle: 'short' }),
-        paymentLink,
-      },
-    }).catch(() => {});
-  }
-
-  logger.info(`Payment links sent to ${bookings.length} customers for jeep ${jeepId}`);
-}
-
-async function autoCreateJeep(originalJeep: { ownerId: string; safariDate: Date; safariType: string; pricePerSeat: any; safariDeadline: Date }): Promise<void> {
-  const newJeep = await prisma.sharedJeep.create({
-    data: {
-      ownerId: originalJeep.ownerId,
-      safariDate: originalJeep.safariDate,
-      safariType: originalJeep.safariType,
-      pricePerSeat: originalJeep.pricePerSeat,
-      safariDeadline: originalJeep.safariDeadline,
-    },
-  });
-  logger.info(`Auto-created new jeep ${newJeep.id} for date ${originalJeep.safariDate.toDateString()} type ${originalJeep.safariType}`);
 }
 
 export async function getBookingById(bookingId: string) {

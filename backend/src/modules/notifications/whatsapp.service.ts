@@ -30,16 +30,19 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>) => object> = {
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: data.date },
+          { type: 'text', text: String(data.customerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.seatNumber) },
           { type: 'text', text: `LKR ${data.amount}` },
-          { type: 'text', text: data.deadline },
+          { type: 'text', text: String(data.deadline) },
         ],
       },
       {
         type: 'button',
         sub_type: 'url',
         index: 0,
-        parameters: [{ type: 'text', text: data.paymentLink }],
+        parameters: [{ type: 'text', text: String(data.paymentLink) }],
       },
     ],
   }),
@@ -129,6 +132,30 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>) => object> = {
           { type: 'text', text: String(data.cancelledDate) },
           { type: 'text', text: String(data.confirmedDate) },
         ],
+      },
+    ],
+  }),
+
+  // Sent to the safari owner when the 4th seat is reserved and payment is triggered
+  owner_safari_payment_alert: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.ownerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.guestCount) },
+          { type: 'text', text: `LKR ${data.expectedRevenue}` },
+          { type: 'text', text: String(data.deadline) },
+          { type: 'text', text: String(data.guestSummary) },
+        ],
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: 0,
+        parameters: [{ type: 'text', text: String(data.dashboardLink) }],
       },
     ],
   }),
