@@ -27,7 +27,6 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "framer-motion": "^10.18.0",
-    "leaflet": "^1.9.4",
     "lucide-react": "^0.312.0",
     "next": "14.1.0",
     "next-auth": "^4.24.5",
