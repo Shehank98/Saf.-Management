@@ -32,8 +32,8 @@ export function SeatMap({ seats, onSelectSeat, selectedSeat }: SeatMapProps) {
     if (isSelected) return 'bg-yellow-400 ring-2 ring-yellow-600';
     switch (seat.status) {
       case 'available': return 'bg-green-500 hover:bg-green-400 cursor-pointer active:scale-95';
-      case 'reserved': return 'bg-orange-400 cursor-not-allowed opacity-70';
-      case 'paid': return 'bg-red-500 cursor-not-allowed opacity-70';
+      case 'reserved': return 'bg-red-500 cursor-not-allowed opacity-80';
+      case 'paid': return 'bg-red-700 cursor-not-allowed opacity-80';
       default: return 'bg-gray-400 cursor-not-allowed';
     }
   };
@@ -87,11 +87,11 @@ export function SeatMap({ seats, onSelectSeat, selectedSeat }: SeatMapProps) {
           <span>Available</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-orange-400 rounded-full" />
+          <div className="w-3 h-3 bg-red-500 rounded-full" />
           <span>Reserved</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-red-500 rounded-full" />
+          <div className="w-3 h-3 bg-red-700 rounded-full" />
           <span>Paid</span>
         </div>
         <div className="flex items-center gap-1.5">

@@ -2,7 +2,7 @@
 
 import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { SeatMap, type Seat } from '@/components/booking/SeatMap';
 import { LocationPicker } from '@/components/booking/LocationPicker';
@@ -16,7 +16,7 @@ interface JeepData {
   safariType: string;
   pricePerSeat: number;
   status: string;
-  bookings: { seatNumber: number; rowPosition: string; status: string }[];
+  bookings: { seatNumber: number; status: string }[];
   owner: { companyName: string };
 }
 
@@ -25,36 +25,78 @@ const STEPS = ['Select Seat', 'Pickup Location', 'Meal Preferences', 'Confirm'];
 export default function BookingSeatPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const date = params.linkId as string;
-  const safariType = searchParams.get('type') || '';
+  const token = params.linkId as string;
+  const seatParam = searchParams.get('seat') ? parseInt(searchParams.get('seat')!, 10) : null;
 
   const [step, setStep] = useState(0);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [holdDeadline, setHoldDeadline] = useState<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState('');
   const [locationData, setLocationData] = useState<{ lat: number; lng: number; isValid: boolean; distance: number } | null>(null);
   const [mealData, setMealData] = useState({ mealIncluded: false, mealTypes: [] as string[], dietaryReqs: [] as string[], allergies: '' });
   const [cameraNeeded, setCameraNeeded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const seatInitialized = useRef(false);
 
-  const { data, isLoading } = useQuery<{ data: JeepData[] }>({
-    queryKey: ['jeeps', date, safariType],
-    queryFn: () => api.get(`/shared-safari/jeeps/${date}/${encodeURIComponent(safariType)}`).then((r) => r.data),
-    enabled: !!date && !!safariType,
+  const { data, isLoading } = useQuery<{ data: JeepData }>({
+    queryKey: ['jeep-by-token', token],
+    queryFn: () => api.get(`/shared-safari/link/${token}`).then((r) => r.data),
+    enabled: !!token,
   });
 
-  const jeep = data?.data?.[0];
+  const jeep = data?.data;
 
   const seats: Seat[] = jeep
     ? Array.from({ length: 6 }, (_, i) => {
         const num = i + 1;
         const booking = jeep.bookings.find((b) => b.seatNumber === num);
-        const row = ([1, 2].includes(num) ? 'Front' : [3, 4].includes(num) ? 'Middle' : 'Back') as Seat['row'];
+        const row = (num <= 2 ? 'Front' : num <= 4 ? 'Middle' : 'Back') as Seat['row'];
         return {
           number: num,
           row,
-          status: booking ? (booking.status === 'PAID' || booking.status === 'CONFIRMED' ? 'paid' : 'reserved') : 'available',
+          status: booking
+            ? booking.status === 'PAID' || booking.status === 'CONFIRMED'
+              ? 'paid'
+              : 'reserved'
+            : 'available',
         };
       })
     : [];
+
+  // Pre-select seat from URL param once jeep data is loaded
+  useEffect(() => {
+    if (!jeep || seatInitialized.current || !seatParam) return;
+    seatInitialized.current = true;
+    const seat = seats.find((s) => s.number === seatParam && s.status === 'available');
+    if (seat) {
+      setSelectedSeat(seat);
+      setHoldDeadline(new Date(Date.now() + 15 * 60 * 1000));
+    }
+  }, [jeep]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Countdown timer
+  useEffect(() => {
+    if (!holdDeadline) return;
+    const interval = setInterval(() => {
+      const diff = holdDeadline.getTime() - Date.now();
+      if (diff <= 0) {
+        setSelectedSeat(null);
+        setHoldDeadline(null);
+        setTimeLeft('');
+        clearInterval(interval);
+      } else {
+        const m = Math.floor(diff / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${m}:${s.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [holdDeadline]);
+
+  const handleSeatSelect = (seat: Seat) => {
+    setSelectedSeat(seat);
+    setHoldDeadline(new Date(Date.now() + 15 * 60 * 1000));
+  };
 
   const basePrice = jeep ? parseFloat(String(jeep.pricePerSeat)) : 0;
   const mealPrice = mealData.mealIncluded ? 500 : 0;
@@ -100,10 +142,13 @@ export default function BookingSeatPage() {
   if (!jeep) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">No safari available for this date and type.</p>
+        <p className="text-gray-500">No safari available for this booking link.</p>
       </div>
     );
   }
+
+  const paidCount = jeep.bookings.filter((b) => b.status === 'PAID' || b.status === 'CONFIRMED').length;
+  const needed = Math.max(0, 4 - paidCount);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
@@ -120,7 +165,7 @@ export default function BookingSeatPage() {
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
               jeep.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
             }`}>
-              {jeep.status === 'CONFIRMED' ? 'Safari Confirmed' : 'Pending 4 paid seats'}
+              {jeep.status === 'CONFIRMED' ? 'Safari Confirmed' : needed > 0 ? `Need ${needed} more to confirm` : 'Pending'}
             </span>
           </div>
         </div>
@@ -135,8 +180,33 @@ export default function BookingSeatPage() {
 
         {step === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl shadow-sm border p-6">
-            <h2 className="font-semibold text-gray-900 mb-5">Select Your Seat</h2>
-            <SeatMap seats={seats} onSelectSeat={setSelectedSeat} selectedSeat={selectedSeat?.number} />
+            <h2 className="font-semibold text-gray-900 mb-2">Select Your Seat</h2>
+
+            {/* 15-minute hold timer */}
+            {selectedSeat && holdDeadline && timeLeft && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-500 text-base">⏱</span>
+                  <span className="text-amber-700 text-sm font-medium">
+                    Seat {selectedSeat.number} held for
+                  </span>
+                </div>
+                <span className="text-amber-700 font-bold text-lg tabular-nums">{timeLeft}</span>
+              </motion.div>
+            )}
+
+            {needed > 0 && (
+              <p className="text-xs text-orange-500 font-medium mb-4">
+                Need {needed} more booking{needed !== 1 ? 's' : ''} to confirm this safari
+              </p>
+            )}
+
+            <SeatMap seats={seats} onSelectSeat={handleSeatSelect} selectedSeat={selectedSeat?.number} />
+
             {selectedSeat && (
               <div className="mt-6 flex justify-between items-center">
                 <p className="text-sm text-gray-600">Seat {selectedSeat.number} — {selectedSeat.row} Row</p>

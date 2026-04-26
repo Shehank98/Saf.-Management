@@ -178,47 +178,85 @@ export default function BookingPage() {
           {/* Step 3 – Pick a jeep */}
           {selectedDate && selectedType && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border p-6">
-              <h2 className="font-semibold text-gray-900 mb-4">Select a Jeep</h2>
+              <h2 className="font-semibold text-gray-900 mb-4">Select a Seat</h2>
+              <p className="text-xs text-gray-400 mb-4 flex items-center gap-3">
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500 inline-block" /> Available</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500 inline-block" /> Taken</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> Your pick</span>
+              </p>
               {jeepsLoading && (
                 <div className="space-y-3">
-                  {[...Array(2)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+                  {[...Array(2)].map((_, i) => <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />)}
                 </div>
               )}
               {!jeepsLoading && (!jeepsData || jeepsData.length === 0) && (
                 <p className="text-gray-500 text-sm">No jeeps available for this date and type.</p>
               )}
               {jeepsData?.map((jeep: any) => {
-                const available = jeep.totalSeats - jeep.reservedSeats - jeep.paidSeats;
+                const takenCount = (jeep.bookings?.length || 0);
+                const paidSeats = jeep.paidSeats || 0;
+                const needed = Math.max(0, 4 - paidSeats);
                 return (
-                  <button
+                  <div
                     key={jeep.id}
-                    onClick={() => router.push(`/book/${jeep.bookingLinkToken}`)}
-                    className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-green-400 transition-all mb-3"
+                    className="rounded-xl border-2 border-gray-200 p-4 mb-4"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                       <div>
                         <p className="font-semibold text-gray-900">
                           {formatCurrency(parseFloat(jeep.pricePerSeat))} / seat
                         </p>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          {jeep.paidSeats}/{jeep.totalSeats} booked · {available} seat{available !== 1 ? 's' : ''} left
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {takenCount}/{jeep.totalSeats} Reserved
                         </p>
                       </div>
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                        jeep.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {jeep.status === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
-                      </span>
+                      <div className="text-right">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                          jeep.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          {jeep.status === 'CONFIRMED' ? 'Confirmed' : 'Pending'}
+                        </span>
+                        {needed > 0 && (
+                          <p className="text-xs text-orange-600 font-medium mt-1">
+                            Need {needed} more to confirm!
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    {/* Seat bar */}
-                    <div className="flex gap-1 mt-3">
-                      {Array.from({ length: jeep.totalSeats }, (_, i) => {
-                        const b = jeep.bookings?.find((bk: any) => bk.seatNumber === i + 1);
-                        const color = !b ? 'bg-gray-200' : (b.status === 'PAID' || b.status === 'CONFIRMED') ? 'bg-green-500' : 'bg-amber-400';
-                        return <div key={i} className={`h-2 flex-1 rounded-full ${color}`} />;
+
+                    {/* Compact visual seat map */}
+                    <div className="space-y-1.5">
+                      {(['Front', 'Middle', 'Back'] as const).map((row, ri) => {
+                        const nums = ri === 0 ? [1, 2] : ri === 1 ? [3, 4] : [5, 6];
+                        return (
+                          <div key={row} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 w-12 flex-shrink-0">{row}</span>
+                            <div className="flex gap-2">
+                              {nums.map((num) => {
+                                const b = jeep.bookings?.find((bk: any) => bk.seatNumber === num);
+                                const taken = b && (b.status === 'PAID' || b.status === 'CONFIRMED' || b.status === 'RESERVED' || b.status === 'PAYMENT_PENDING');
+                                return (
+                                  <motion.button
+                                    key={num}
+                                    whileTap={!taken ? { scale: 0.9 } : {}}
+                                    disabled={!!taken}
+                                    onClick={() => router.push(`/book/${jeep.bookingLinkToken}?seat=${num}`)}
+                                    className={`w-12 h-10 rounded-lg text-white text-xs font-semibold transition-all ${
+                                      taken
+                                        ? 'bg-red-500 cursor-not-allowed opacity-80'
+                                        : 'bg-green-500 hover:bg-green-400 cursor-pointer'
+                                    }`}
+                                  >
+                                    {num}
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
                       })}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </motion.div>
