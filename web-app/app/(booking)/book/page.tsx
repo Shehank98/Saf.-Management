@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -14,6 +14,21 @@ interface AvailableDate {
 }
 
 export default function BookingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl animate-bounce mb-3">🦁</div>
+          <p className="text-gray-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    }>
+      <BookingContent />
+    </Suspense>
+  );
+}
+
+function BookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ownerUserId = searchParams.get('owner') || undefined;
