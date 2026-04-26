@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
@@ -15,12 +15,14 @@ interface AvailableDate {
 
 export default function BookingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ownerUserId = searchParams.get('owner') || undefined;
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const { data: datesData, isLoading } = useQuery<{ data: AvailableDate[] }>({
-    queryKey: ['available-dates'],
-    queryFn: () => api.get('/shared-safari/available-dates').then((r) => r.data),
+    queryKey: ['available-dates', ownerUserId],
+    queryFn: () => api.get('/shared-safari/available-dates', { params: ownerUserId ? { owner: ownerUserId } : {} }).then((r) => r.data),
   });
 
   // Step 3: load available jeeps once date + type chosen

@@ -182,6 +182,11 @@ model SafariOwner {
   depositPercentage      Decimal @default(30.00)
   sharedSafariCommission Decimal @default(15.00)
 
+  priceFullDay          Decimal?
+  priceHalfDayMorning   Decimal?
+  priceHalfDayAfternoon Decimal?
+  mealPrice             Decimal?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

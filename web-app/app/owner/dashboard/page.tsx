@@ -97,6 +97,42 @@ export default function OwnerDashboard() {
     enabled: tab === 'vendors',
   });
 
+  const { data: pricingData, isLoading: pricingLoading } = useQuery<{
+    priceFullDay: string | null; priceHalfDayMorning: string | null; priceHalfDayAfternoon: string | null;
+    mealPrice: string | null; portalUrl: string;
+  }>({
+    queryKey: ['owner-pricing'],
+    queryFn: () => api.get('/owner/pricing').then((r) => r.data.data),
+    enabled: mounted,
+  });
+
+  const [pricingForm, setPricingForm] = useState({ priceFullDay: '', priceHalfDayMorning: '', priceHalfDayAfternoon: '', mealPrice: '' });
+  const [pricingLoaded, setPricingLoaded] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [scheduleMsg, setScheduleMsg] = useState('');
+
+  useEffect(() => {
+    if (pricingData && !pricingLoaded) {
+      setPricingForm({
+        priceFullDay:          pricingData.priceFullDay ?? '',
+        priceHalfDayMorning:   pricingData.priceHalfDayMorning ?? '',
+        priceHalfDayAfternoon: pricingData.priceHalfDayAfternoon ?? '',
+        mealPrice:             pricingData.mealPrice ?? '',
+      });
+      setPricingLoaded(true);
+    }
+  }, [pricingData, pricingLoaded]);
+
+  const savePricingMutation = useMutation({
+    mutationFn: (body: any) => api.put('/owner/pricing', body),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['owner-pricing'] });
+      const msg = res.data?.message || 'Pricing saved.';
+      setScheduleMsg(msg);
+      setTimeout(() => setScheduleMsg(''), 6000);
+    },
+  });
+
   const { data: availableVendors = [] } = useQuery<any[]>({
     queryKey: ['available-vendors', vendorAssignSafari?.safariDate],
     queryFn: () =>
@@ -154,6 +190,7 @@ export default function OwnerDashboard() {
   if (has('PRIVATE_SAFARI'))   tabs.push({ key: 'private', label: 'Private Safaris', icon: '👑' });
   if (has('SHARED_TRIPS'))     tabs.push({ key: 'shared',  label: 'Shared Safaris',  icon: '🚙' });
   if (has('VENDOR_LISTINGS'))  tabs.push({ key: 'vendors', label: 'Vendor Payments', icon: '💳' });
+  tabs.push({ key: 'settings', label: 'Booking Settings', icon: '⚙️' });
 
   const handleCreatePrivate = () => {
     const { safariDate, numberOfGuests, totalAmount, customerName, locationId } = newPrivateForm;
@@ -1054,6 +1091,124 @@ export default function OwnerDashboard() {
               ))}
             </motion.div>
           )}
+          {/* ========== SETTINGS ========== */}
+          {tab === 'settings' && (
+            <motion.div key="settings" {...fadeIn} className="space-y-6">
+
+              {/* Portal link card */}
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="font-semibold text-gray-900 mb-1">Customer Booking Portal</h2>
+                  <p className="text-sm text-gray-500 mb-4">Share this link with your customers so they can book seats directly.</p>
+                  {pricingLoading ? (
+                    <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+                  ) : pricingData?.portalUrl ? (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        readOnly
+                        value={pricingData.portalUrl}
+                        className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700 font-mono"
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(pricingData.portalUrl);
+                          setCopySuccess(true);
+                          setTimeout(() => setCopySuccess(false), 2000);
+                        }}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        {copySuccess ? '✓ Copied!' : 'Copy Link'}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-amber-600">Save your pricing below to activate the portal link.</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-3">
+                    The link filters to your safaris only. Customers can pick a date, type, and seat without logging in.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Pricing form */}
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="font-semibold text-gray-900 mb-1">Safari Pricing</h2>
+                  <p className="text-sm text-gray-500 mb-5">
+                    Set your prices once. The system will auto-create jeep slots for the next 30 days at these prices.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Full Day Price (LKR) <span className="text-gray-400">6:00 AM – 6:00 PM</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={pricingForm.priceFullDay}
+                        onChange={(e) => setPricingForm((p) => ({ ...p, priceFullDay: e.target.value }))}
+                        placeholder="e.g. 15000"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Half Day Morning Price (LKR) <span className="text-gray-400">6:00 AM – 12:00 PM</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={pricingForm.priceHalfDayMorning}
+                        onChange={(e) => setPricingForm((p) => ({ ...p, priceHalfDayMorning: e.target.value }))}
+                        placeholder="e.g. 9000"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Half Day Afternoon Price (LKR) <span className="text-gray-400">12:00 PM – 6:00 PM</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={pricingForm.priceHalfDayAfternoon}
+                        onChange={(e) => setPricingForm((p) => ({ ...p, priceHalfDayAfternoon: e.target.value }))}
+                        placeholder="e.g. 9000"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Meal Add-on Price (LKR) <span className="text-gray-400">per person, optional</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={pricingForm.mealPrice}
+                        onChange={(e) => setPricingForm((p) => ({ ...p, mealPrice: e.target.value }))}
+                        placeholder="e.g. 500 (leave blank to disable)"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {scheduleMsg && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                      ✓ {scheduleMsg}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => savePricingMutation.mutate(pricingForm)}
+                    disabled={savePricingMutation.isPending}
+                    className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm"
+                  >
+                    {savePricingMutation.isPending ? 'Saving...' : 'Save & Auto-Schedule Jeeps'}
+                  </button>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Existing jeep slots are never modified. Only missing days are created.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
         </AnimatePresence>
       </div>
     </main>

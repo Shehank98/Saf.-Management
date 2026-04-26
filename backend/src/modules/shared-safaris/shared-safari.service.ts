@@ -463,6 +463,54 @@ export async function getPaymentTracking(jeepId: string) {
   };
 }
 
+export async function autoScheduleJeeps(
+  ownerId: string,
+  pricing: { priceFullDay: number | null; priceHalfDayMorning: number | null; priceHalfDayAfternoon: number | null },
+  daysAhead = 30,
+): Promise<number> {
+  const types = [
+    { type: 'Full Day', price: pricing.priceFullDay },
+    { type: 'Half Day Morning', price: pricing.priceHalfDayMorning },
+    { type: 'Half Day Afternoon', price: pricing.priceHalfDayAfternoon },
+  ].filter((t) => t.price !== null && t.price > 0) as { type: string; price: number }[];
+
+  if (types.length === 0) return 0;
+
+  let created = 0;
+  const today = new Date();
+
+  for (let d = 1; d <= daysAhead; d++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + d);
+    date.setHours(0, 0, 0, 0);
+    const nextDate = new Date(date.getTime() + 86400000);
+
+    for (const { type, price } of types) {
+      const existing = await prisma.sharedJeep.findFirst({
+        where: { ownerId, safariDate: { gte: date, lt: nextDate }, safariType: type },
+        select: { id: true },
+      });
+      if (!existing) {
+        const token = randomBytes(16).toString('hex');
+        await prisma.sharedJeep.create({
+          data: {
+            ownerId,
+            safariDate: date,
+            safariType: type,
+            pricePerSeat: price,
+            safariDeadline: new Date(date.getTime() - 24 * 60 * 60 * 1000),
+            bookingLinkToken: token,
+          },
+        });
+        created++;
+      }
+    }
+  }
+
+  logger.info(`autoScheduleJeeps: created ${created} slots for owner ${ownerId}`);
+  return created;
+}
+
 export async function generateBookingLink(jeepId: string) {
   const token = randomBytes(16).toString('hex');
   await prisma.sharedJeep.update({

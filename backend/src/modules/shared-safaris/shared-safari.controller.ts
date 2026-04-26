@@ -11,8 +11,18 @@ const BASE_LOCATION = {
 const MAX_RADIUS_KM = parseFloat(process.env.PICKUP_RADIUS_KM || '7');
 
 export async function getAvailableDates(req: Request, res: Response): Promise<void> {
-  const { ownerId } = req.query;
-  const dates = await service.getAvailableDates(ownerId as string | undefined);
+  const { ownerId, owner: ownerUserId } = req.query;
+
+  let resolvedOwnerId = ownerId as string | undefined;
+  if (ownerUserId && !resolvedOwnerId) {
+    const found = await prisma.safariOwner.findUnique({
+      where: { userId: ownerUserId as string },
+      select: { id: true },
+    });
+    resolvedOwnerId = found?.id;
+  }
+
+  const dates = await service.getAvailableDates(resolvedOwnerId);
   res.json(successResponse(dates));
 }
 

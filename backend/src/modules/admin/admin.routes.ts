@@ -5,6 +5,7 @@ import * as service from './admin.service';
 import { checkPaymentDeadlines } from '../cron/payment-deadline.cron';
 import { checkSafariCancellations } from '../cron/safari-cancellation.cron';
 import { checkSubscriptionExpiry } from '../cron/subscription-expiry.cron';
+import { checkSharedSafariSchedule } from '../cron/shared-safari-schedule.cron';
 import { successResponse, errorResponse } from '../../types';
 import { prisma } from '../../config/database';
 
@@ -92,6 +93,11 @@ router.post('/cron/safari-cancellations', wrap(async (_req: any, res: any) => {
 
 router.post('/cron/subscription-expiry', wrap(async (_req: any, res: any) => {
   await checkSubscriptionExpiry();
+  res.json(successResponse(null, 'Completed'));
+}));
+
+router.post('/cron/shared-safari-schedule', wrap(async (_req: any, res: any) => {
+  await checkSharedSafariSchedule();
   res.json(successResponse(null, 'Completed'));
 }));
 

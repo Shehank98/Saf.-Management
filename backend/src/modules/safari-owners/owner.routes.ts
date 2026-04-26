@@ -3,6 +3,7 @@ import { authenticate } from '../../middleware/auth.middleware';
 import { requireRole } from '../../middleware/role.middleware';
 import { prisma } from '../../config/database';
 import { successResponse, errorResponse, AuthRequest } from '../../types';
+import { autoScheduleJeeps } from '../shared-safaris/shared-safari.service';
 
 const router = Router();
 const wrap = (fn: Function) => (req: any, res: any, next: any) =>
@@ -124,6 +125,56 @@ router.post('/vendor-payments/:id/mark-paid', wrap(async (_req: any, res: any) =
     data: { status: 'PAID', paidAt: new Date() },
   });
   res.json(successResponse(payment, 'Payment marked as paid'));
+}));
+
+// ==================== PRICING & PORTAL LINK ====================
+
+router.get('/pricing', wrap(async (req: AuthRequest, res: any) => {
+  const owner = await prisma.safariOwner.findUnique({
+    where: { userId: req.user!.userId },
+    select: { userId: true, priceFullDay: true, priceHalfDayMorning: true, priceHalfDayAfternoon: true, mealPrice: true },
+  });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  const webAppUrl = process.env.WEB_APP_URL || '';
+  res.json(successResponse({
+    priceFullDay:          owner.priceFullDay,
+    priceHalfDayMorning:   owner.priceHalfDayMorning,
+    priceHalfDayAfternoon: owner.priceHalfDayAfternoon,
+    mealPrice:             owner.mealPrice,
+    portalUrl: `${webAppUrl}/book?owner=${owner.userId}`,
+  }));
+}));
+
+router.put('/pricing', wrap(async (req: AuthRequest, res: any) => {
+  const { priceFullDay, priceHalfDayMorning, priceHalfDayAfternoon, mealPrice } = req.body;
+  const toNum = (v: any) => (v !== undefined && v !== '' ? parseFloat(v) : undefined);
+
+  const owner = await prisma.safariOwner.update({
+    where: { userId: req.user!.userId },
+    data: {
+      ...(toNum(priceFullDay)          !== undefined ? { priceFullDay:          toNum(priceFullDay) }          : {}),
+      ...(toNum(priceHalfDayMorning)   !== undefined ? { priceHalfDayMorning:   toNum(priceHalfDayMorning) }   : {}),
+      ...(toNum(priceHalfDayAfternoon) !== undefined ? { priceHalfDayAfternoon: toNum(priceHalfDayAfternoon) } : {}),
+      ...(mealPrice !== undefined ? { mealPrice: mealPrice !== '' ? parseFloat(mealPrice) : null } : {}),
+    },
+    select: { id: true, userId: true, priceFullDay: true, priceHalfDayMorning: true, priceHalfDayAfternoon: true, mealPrice: true },
+  });
+
+  const created = await autoScheduleJeeps(owner.id, {
+    priceFullDay:          owner.priceFullDay ? parseFloat(owner.priceFullDay.toString()) : null,
+    priceHalfDayMorning:   owner.priceHalfDayMorning ? parseFloat(owner.priceHalfDayMorning.toString()) : null,
+    priceHalfDayAfternoon: owner.priceHalfDayAfternoon ? parseFloat(owner.priceHalfDayAfternoon.toString()) : null,
+  });
+
+  const webAppUrl = process.env.WEB_APP_URL || '';
+  res.json(successResponse({
+    priceFullDay:          owner.priceFullDay,
+    priceHalfDayMorning:   owner.priceHalfDayMorning,
+    priceHalfDayAfternoon: owner.priceHalfDayAfternoon,
+    mealPrice:             owner.mealPrice,
+    portalUrl: `${webAppUrl}/book?owner=${owner.userId}`,
+    jeepsCreated: created,
+  }, `Pricing saved. ${created} new jeep slots scheduled.`));
 }));
 
 router.get('/subscription', wrap(async (req: AuthRequest, res: any) => {
