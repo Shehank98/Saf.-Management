@@ -45,14 +45,16 @@ export async function reserveSeat(req: AuthRequest, res: Response): Promise<void
   const customer = await prisma.customer.findUnique({ where: { userId: req.user!.userId } });
   if (!customer) { res.status(404).json(errorResponse('Customer profile not found')); return; }
 
-  const valid = isWithinRadius(
-    { lat: pickupData.pickupLat, lng: pickupData.pickupLng },
-    BASE_LOCATION,
-    MAX_RADIUS_KM
-  );
-  if (!valid) {
-    res.status(400).json(errorResponse(`Pickup location is outside the ${MAX_RADIUS_KM}km service radius`));
-    return;
+  if (pickupData.pickupLat != null && pickupData.pickupLng != null) {
+    const valid = isWithinRadius(
+      { lat: pickupData.pickupLat, lng: pickupData.pickupLng },
+      BASE_LOCATION,
+      MAX_RADIUS_KM
+    );
+    if (!valid) {
+      res.status(400).json(errorResponse(`Pickup location is outside the ${MAX_RADIUS_KM}km service radius`));
+      return;
+    }
   }
 
   const booking = await service.reserveSeat(jeepId, customer.id, seatNumber, pickupData);

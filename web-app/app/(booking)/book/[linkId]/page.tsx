@@ -1,11 +1,9 @@
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { SeatMap, type Seat } from '@/components/booking/SeatMap';
-import { LocationPicker } from '@/components/booking/LocationPicker';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MealPreferences } from '@/components/booking/MealPreferences';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -20,23 +18,26 @@ interface JeepData {
   owner: { companyName: string };
 }
 
-const STEPS = ['Select Seat', 'Pickup Location', 'Meal Preferences', 'Confirm'];
+const STEPS = ['Select Seats', 'Pickup Details', 'Extras', 'Confirm'];
+
+const TAKEN_STATUSES = ['PAID', 'CONFIRMED', 'RESERVED', 'PAYMENT_PENDING'];
 
 export default function BookingSeatPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const token = params.linkId as string;
-  const seatParam = searchParams.get('seat') ? parseInt(searchParams.get('seat')!, 10) : null;
 
   const [step, setStep] = useState(0);
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [holdDeadline, setHoldDeadline] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
-  const [locationData, setLocationData] = useState<{ lat: number; lng: number; isValid: boolean; distance: number } | null>(null);
-  const [mealData, setMealData] = useState({ mealIncluded: false, mealTypes: [] as string[], dietaryReqs: [] as string[], allergies: '' });
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [pickupTime, setPickupTime] = useState('05:45 AM');
+  const [mealData, setMealData] = useState({
+    mealIncluded: false, mealTypes: [] as string[], dietaryReqs: [] as string[], allergies: '',
+  });
   const [cameraNeeded, setCameraNeeded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const seatInitialized = useRef(false);
+  const [bookingDone, setBookingDone] = useState(false);
 
   const { data, isLoading } = useQuery<{ data: JeepData }>({
     queryKey: ['jeep-by-token', token],
@@ -46,33 +47,9 @@ export default function BookingSeatPage() {
 
   const jeep = data?.data;
 
-  const seats: Seat[] = jeep
-    ? Array.from({ length: 6 }, (_, i) => {
-        const num = i + 1;
-        const booking = jeep.bookings.find((b) => b.seatNumber === num);
-        const row = (num <= 2 ? 'Front' : num <= 4 ? 'Middle' : 'Back') as Seat['row'];
-        return {
-          number: num,
-          row,
-          status: booking
-            ? booking.status === 'PAID' || booking.status === 'CONFIRMED'
-              ? 'paid'
-              : 'reserved'
-            : 'available',
-        };
-      })
+  const takenSeats = jeep
+    ? jeep.bookings.filter((b) => TAKEN_STATUSES.includes(b.status)).map((b) => b.seatNumber)
     : [];
-
-  // Pre-select seat from URL param once jeep data is loaded
-  useEffect(() => {
-    if (!jeep || seatInitialized.current || !seatParam) return;
-    seatInitialized.current = true;
-    const seat = seats.find((s) => s.number === seatParam && s.status === 'available');
-    if (seat) {
-      setSelectedSeat(seat);
-      setHoldDeadline(new Date(Date.now() + 15 * 60 * 1000));
-    }
-  }, [jeep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Countdown timer
   useEffect(() => {
@@ -80,7 +57,7 @@ export default function BookingSeatPage() {
     const interval = setInterval(() => {
       const diff = holdDeadline.getTime() - Date.now();
       if (diff <= 0) {
-        setSelectedSeat(null);
+        setSelectedSeats([]);
         setHoldDeadline(null);
         setTimeLeft('');
         clearInterval(interval);
@@ -93,36 +70,47 @@ export default function BookingSeatPage() {
     return () => clearInterval(interval);
   }, [holdDeadline]);
 
-  const handleSeatSelect = (seat: Seat) => {
-    setSelectedSeat(seat);
-    setHoldDeadline(new Date(Date.now() + 15 * 60 * 1000));
+  const toggleSeat = (num: number) => {
+    if (takenSeats.includes(num)) return;
+    setSelectedSeats((prev) => {
+      const next = prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num];
+      if (next.length > 0 && !holdDeadline) {
+        setHoldDeadline(new Date(Date.now() + 15 * 60 * 1000));
+      }
+      if (next.length === 0) {
+        setHoldDeadline(null);
+        setTimeLeft('');
+      }
+      return next;
+    });
   };
 
   const basePrice = jeep ? parseFloat(String(jeep.pricePerSeat)) : 0;
-  const mealPrice = mealData.mealIncluded ? 500 : 0;
+  const seatCount = selectedSeats.length;
+  const mealPrice = mealData.mealIncluded ? 500 * seatCount : 0;
   const cameraPrice = cameraNeeded ? 1500 : 0;
-  const total = basePrice + mealPrice + cameraPrice;
+  const total = basePrice * seatCount + mealPrice + cameraPrice;
 
   const handleConfirm = async () => {
-    if (!jeep || !selectedSeat || !locationData?.isValid) return;
+    if (!jeep || selectedSeats.length === 0 || !pickupAddress.trim()) return;
     setIsSubmitting(true);
     try {
-      await api.post('/shared-safari/reserve-seat', {
-        jeepId: jeep.id,
-        seatNumber: selectedSeat.number,
-        pickupLocation: 'Selected on map',
-        pickupLat: locationData.lat,
-        pickupLng: locationData.lng,
-        pickupTime: '06:00 AM',
-        ...mealData,
-        cameraNeeded,
-      });
-      alert('Seat reserved! You will receive a WhatsApp message with payment details.');
+      for (const seatNumber of selectedSeats) {
+        await api.post('/shared-safari/reserve-seat', {
+          jeepId: jeep.id,
+          seatNumber,
+          pickupLocation: pickupAddress.trim(),
+          pickupTime,
+          ...mealData,
+          cameraNeeded,
+        });
+      }
+      setBookingDone(true);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as any).response?.data?.error
-        : 'Reservation failed';
-      alert(msg || 'Reservation failed');
+        : 'Reservation failed. Please try again.';
+      alert(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -130,10 +118,10 @@ export default function BookingSeatPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl animate-bounce mb-4">🦁</div>
-          <p className="text-gray-500">Loading safari...</p>
+      <div className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-6xl mb-4 animate-bounce">🦁</div>
+          <p className="text-emerald-200">Loading safari...</p>
         </div>
       </div>
     );
@@ -141,189 +129,398 @@ export default function BookingSeatPage() {
 
   if (!jeep) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">No safari available for this booking link.</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-5xl mb-3">🔍</div>
+          <p className="text-gray-600 font-medium">Booking link not found or expired.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (bookingDone) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl"
+        >
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">You're all set!</h2>
+          <p className="text-gray-500 text-sm mb-4">
+            {seatCount} seat{seatCount !== 1 ? 's' : ''} reserved on <strong>{jeep.safariType}</strong>.
+          </p>
+          <div className="bg-emerald-50 rounded-xl p-4 text-sm text-emerald-800 text-left mb-6">
+            <p className="font-medium mb-1">What happens next?</p>
+            <p>You'll receive a WhatsApp message with your payment link shortly. The safari confirms once 4+ seats are paid.</p>
+          </div>
+          <p className="text-xs text-gray-400">You can close this page.</p>
+        </motion.div>
       </div>
     );
   }
 
   const paidCount = jeep.bookings.filter((b) => b.status === 'PAID' || b.status === 'CONFIRMED').length;
   const needed = Math.max(0, 4 - paidCount);
+  const safariDate = new Date(jeep.safariDate).toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-sm border p-5 mb-6">
-          <p className="text-green-700 font-semibold text-sm">{jeep.owner.companyName}</p>
-          <h1 className="text-2xl font-bold text-gray-900 mt-1">{jeep.safariType}</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {new Date(jeep.safariDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-            <span className="text-gray-500 text-sm">From {formatCurrency(basePrice)}/seat</span>
+    <main className="min-h-screen bg-gray-50">
+      {/* Hero header */}
+      <div className="bg-gradient-to-br from-green-900 via-green-800 to-emerald-700 text-white px-5 pt-10 pb-16">
+        <div className="max-w-lg mx-auto">
+          <p className="text-emerald-300 text-xs font-semibold uppercase tracking-wide mb-1">{jeep.owner.companyName}</p>
+          <h1 className="text-2xl font-bold">{jeep.safariType}</h1>
+          <p className="text-emerald-200 text-sm mt-1">{safariDate}</p>
+          <div className="flex items-center gap-3 mt-3">
+            <span className="text-sm font-semibold">{formatCurrency(basePrice)} / seat</span>
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-              jeep.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+              jeep.status === 'CONFIRMED'
+                ? 'bg-green-200 text-green-900'
+                : 'bg-amber-200 text-amber-900'
             }`}>
-              {jeep.status === 'CONFIRMED' ? 'Safari Confirmed' : needed > 0 ? `Need ${needed} more to confirm` : 'Pending'}
+              {jeep.status === 'CONFIRMED' ? 'Safari Confirmed' : needed > 0 ? `Need ${needed} more` : 'Pending'}
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Progress */}
-        <div className="flex gap-2 mb-6">
-          {STEPS.map((s, i) => (
-            <div key={s} className={`flex-1 h-1.5 rounded-full ${i <= step ? 'bg-green-500' : 'bg-gray-200'}`} />
-          ))}
+      <div className="max-w-lg mx-auto px-4 -mt-6 pb-16">
+        {/* Progress bar */}
+        <div className="bg-white rounded-2xl shadow-sm border p-4 mb-4">
+          <div className="flex gap-1.5 mb-2">
+            {STEPS.map((s, i) => (
+              <div
+                key={s}
+                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                  i < step ? 'bg-green-500' : i === step ? 'bg-green-400' : 'bg-gray-200'
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">{STEPS[step]} <span className="text-gray-300">· Step {step + 1} of {STEPS.length}</span></p>
         </div>
-        <p className="text-sm text-gray-500 mb-6">Step {step + 1}: {STEPS[step]}</p>
 
-        {step === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl shadow-sm border p-6">
-            <h2 className="font-semibold text-gray-900 mb-2">Select Your Seat</h2>
-
-            {/* 15-minute hold timer */}
-            {selectedSeat && holdDeadline && timeLeft && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-4 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-500 text-base">⏱</span>
-                  <span className="text-amber-700 text-sm font-medium">
-                    Seat {selectedSeat.number} held for
-                  </span>
+        <AnimatePresence mode="wait">
+          {/* ======== STEP 0: SEAT SELECTION ======== */}
+          {step === 0 && (
+            <motion.div
+              key="step0"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-2xl shadow-sm border p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-bold text-gray-900">Select Your Seats</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Tap any green seat to add it to your booking</p>
                 </div>
-                <span className="text-amber-700 font-bold text-lg tabular-nums">{timeLeft}</span>
-              </motion.div>
-            )}
+                {selectedSeats.length > 0 && (
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-green-700">{selectedSeats.length} selected</span>
+                    {timeLeft && (
+                      <p className="text-xs text-amber-600 font-medium mt-0.5">⏱ {timeLeft}</p>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {needed > 0 && (
-              <p className="text-xs text-orange-500 font-medium mb-4">
-                Need {needed} more booking{needed !== 1 ? 's' : ''} to confirm this safari
-              </p>
-            )}
+              {/* Hold timer banner */}
+              {selectedSeats.length > 0 && timeLeft && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mb-4 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5"
+                >
+                  <span className="text-amber-700 text-sm">
+                    {selectedSeats.length} seat{selectedSeats.length > 1 ? 's' : ''} held for
+                  </span>
+                  <span className="text-amber-700 font-bold text-base tabular-nums">{timeLeft}</span>
+                </motion.div>
+              )}
 
-            <SeatMap seats={seats} onSelectSeat={handleSeatSelect} selectedSeat={selectedSeat?.number} />
+              {needed > 0 && (
+                <div className="mb-4 px-3 py-2 bg-orange-50 border border-orange-100 rounded-lg">
+                  <p className="text-xs text-orange-600">⚡ {needed} more booking{needed !== 1 ? 's' : ''} needed to confirm this safari</p>
+                </div>
+              )}
 
-            {selectedSeat && (
-              <div className="mt-6 flex justify-between items-center">
-                <p className="text-sm text-gray-600">Seat {selectedSeat.number} — {selectedSeat.row} Row</p>
+              {/* Legend */}
+              <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-500 inline-block" /> Available</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400 inline-block" /> Taken</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> Your pick</span>
+              </div>
+
+              {/* Seat grid */}
+              <div className="bg-gray-800 rounded-2xl p-5 mb-5">
+                {/* Driver */}
+                <div className="bg-gray-700 rounded-lg h-8 mb-5 flex items-center justify-center">
+                  <span className="text-gray-400 text-xs font-medium tracking-widest">DRIVER</span>
+                </div>
+
+                {(['Front', 'Middle', 'Back'] as const).map((row, ri) => {
+                  const nums = ri === 0 ? [1, 2] : ri === 1 ? [3, 4] : [5, 6];
+                  return (
+                    <div key={row} className="mb-4">
+                      <p className="text-gray-500 text-xs text-center mb-2">{row} Row</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {nums.map((num) => {
+                          const isTaken = takenSeats.includes(num);
+                          const isSelected = selectedSeats.includes(num);
+                          return (
+                            <motion.button
+                              key={num}
+                              whileHover={!isTaken ? { scale: 1.03 } : {}}
+                              whileTap={!isTaken ? { scale: 0.95 } : {}}
+                              disabled={isTaken}
+                              onClick={() => toggleSeat(num)}
+                              className={`h-16 rounded-xl font-semibold text-white transition-all duration-150 ${
+                                isTaken
+                                  ? 'bg-red-400 cursor-not-allowed opacity-70'
+                                  : isSelected
+                                  ? 'bg-yellow-400 ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-800'
+                                  : 'bg-green-500 hover:bg-green-400'
+                              }`}
+                            >
+                              <div className="text-2xl">💺</div>
+                              <div className="text-xs mt-0.5">Seat {num}</div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Selected seats summary */}
+              {selectedSeats.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl"
+                >
+                  <p className="text-sm text-green-800">
+                    <span className="font-semibold">Seats {selectedSeats.sort((a, b) => a - b).join(', ')}</span>
+                    {' · '}
+                    {formatCurrency(basePrice * seatCount)} total
+                  </p>
+                </motion.div>
+              )}
+
+              <button
+                disabled={selectedSeats.length === 0}
+                onClick={() => setStep(1)}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-colors"
+              >
+                {selectedSeats.length === 0
+                  ? 'Select at least one seat'
+                  : `Continue with ${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} →`}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ======== STEP 1: PICKUP DETAILS ======== */}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-2xl shadow-sm border p-5 space-y-5"
+            >
+              <div>
+                <h2 className="font-bold text-gray-900">Pickup Details</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Where should we pick you up?</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Pickup Address / Landmark <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={pickupAddress}
+                  onChange={(e) => setPickupAddress(e.target.value)}
+                  placeholder="e.g. Yala National Park Gate 1 entrance, Hotel name..."
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+                <p className="text-xs text-gray-400 mt-1.5">Be as specific as possible — hotel name, gate, or nearby landmark.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Pickup Time</label>
+                <select
+                  value={pickupTime}
+                  onChange={(e) => setPickupTime(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
+                >
+                  <option>05:30 AM</option>
+                  <option>05:45 AM</option>
+                  <option>06:00 AM</option>
+                  <option>06:15 AM</option>
+                  <option>06:30 AM</option>
+                  <option>11:30 AM</option>
+                  <option>11:45 AM</option>
+                  <option>12:00 PM</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setStep(0)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                  ← Back
+                </button>
                 <button
-                  onClick={() => setStep(1)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
+                  disabled={!pickupAddress.trim()}
+                  onClick={() => setStep(2)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl text-sm transition-colors"
                 >
                   Next →
                 </button>
               </div>
-            )}
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        {step === 1 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl shadow-sm border p-6">
-            <h2 className="font-semibold text-gray-900 mb-5">Select Pickup Location</h2>
-            <LocationPicker
-              apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || ''}
-              onLocationSelect={setLocationData}
-            />
-            <div className="mt-6 flex justify-between">
-              <button onClick={() => setStep(0)} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
-              <button
-                disabled={!locationData?.isValid}
-                onClick={() => setStep(2)}
-                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
-              >
-                Next →
-              </button>
-            </div>
-          </motion.div>
-        )}
+          {/* ======== STEP 2: EXTRAS ======== */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-2xl shadow-sm border p-5 space-y-5"
+            >
+              <div>
+                <h2 className="font-bold text-gray-900">Add-ons</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Optional extras for your safari</p>
+              </div>
 
-        {step === 2 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl shadow-sm border p-6">
-            <h2 className="font-semibold text-gray-900 mb-5">Meal Preferences</h2>
-            <MealPreferences onUpdate={setMealData} />
+              <MealPreferences onUpdate={setMealData} />
 
-            <div className="mt-5 pt-4 border-t">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700">Camera Rental (+LKR 1,500)</p>
-                  <p className="text-xs text-gray-500">Professional DSLR camera</p>
+                  <p className="text-sm font-semibold text-gray-800">Camera Rental</p>
+                  <p className="text-xs text-gray-400">Professional DSLR · +LKR 1,500</p>
                 </div>
                 <button
                   onClick={() => setCameraNeeded(!cameraNeeded)}
-                  className={`w-12 h-6 rounded-full transition-colors ${cameraNeeded ? 'bg-green-500' : 'bg-gray-300'}`}
+                  className={`w-12 h-6 rounded-full transition-colors flex-shrink-0 relative ${cameraNeeded ? 'bg-green-500' : 'bg-gray-300'}`}
                 >
-                  <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-0.5 ${cameraNeeded ? 'translate-x-6' : ''}`} />
+                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${cameraNeeded ? 'left-6' : 'left-0.5'}`} />
                 </button>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-between">
-              <button onClick={() => setStep(1)} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
-              <button
-                onClick={() => setStep(3)}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
-              >
-                Next →
-              </button>
-            </div>
-          </motion.div>
-        )}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setStep(1)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+                >
+                  Review →
+                </button>
+              </div>
+            </motion.div>
+          )}
 
-        {step === 3 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-2xl shadow-sm border p-6">
-            <h2 className="font-semibold text-gray-900 mb-5">Confirm Booking</h2>
+          {/* ======== STEP 3: CONFIRM ======== */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-2xl shadow-sm border p-5 space-y-4"
+            >
+              <div>
+                <h2 className="font-bold text-gray-900">Confirm Booking</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Review your details before reserving</p>
+              </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Safari</span>
-                <span className="font-medium">{jeep.safariType}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Seat</span>
-                <span className="font-medium">#{selectedSeat?.number} ({selectedSeat?.row})</span>
-              </div>
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Base Price</span>
-                <span className="font-medium">{formatCurrency(basePrice)}</span>
-              </div>
-              {mealData.mealIncluded && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Meals</span>
-                  <span className="font-medium">{formatCurrency(mealPrice)}</span>
+              {/* Summary */}
+              <div className="border border-gray-100 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Safari</div>
+                <div className="divide-y divide-gray-100 text-sm">
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">Date</span>
+                    <span className="font-medium text-gray-900">{new Date(jeep.safariDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">Type</span>
+                    <span className="font-medium text-gray-900">{jeep.safariType}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">Seats</span>
+                    <span className="font-medium text-gray-900">
+                      #{selectedSeats.sort((a, b) => a - b).join(', #')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">Pickup</span>
+                    <span className="font-medium text-gray-900 text-right max-w-40 truncate">{pickupAddress}</span>
+                  </div>
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">Pickup time</span>
+                    <span className="font-medium text-gray-900">{pickupTime}</span>
+                  </div>
                 </div>
-              )}
-              {cameraNeeded && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Camera Rental</span>
-                  <span className="font-medium">{formatCurrency(cameraPrice)}</span>
+
+                <div className="bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pricing</div>
+                <div className="divide-y divide-gray-100 text-sm">
+                  <div className="flex justify-between px-4 py-3">
+                    <span className="text-gray-600">{seatCount} × Seat</span>
+                    <span className="font-medium">{formatCurrency(basePrice * seatCount)}</span>
+                  </div>
+                  {mealData.mealIncluded && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-gray-600">{seatCount} × Meal</span>
+                      <span className="font-medium">{formatCurrency(mealPrice)}</span>
+                    </div>
+                  )}
+                  {cameraNeeded && (
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-gray-600">Camera Rental</span>
+                      <span className="font-medium">{formatCurrency(cameraPrice)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between px-4 py-3.5 bg-green-50">
+                    <span className="font-bold text-gray-900">Total</span>
+                    <span className="font-bold text-green-700 text-base">{formatCurrency(total)}</span>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between py-3 font-bold text-base">
-                <span>Total</span>
-                <span className="text-green-700">{formatCurrency(total)}</span>
               </div>
-            </div>
 
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-              After reserving, you will receive a WhatsApp payment link within 24 hours. Safari is confirmed once 4+ seats are paid.
-            </div>
+              <div className="p-4 bg-blue-50 rounded-xl text-xs text-blue-700 leading-relaxed">
+                After reserving, you'll receive a WhatsApp payment link. Your seats are held for 15 minutes. Safari is confirmed once 4+ seats are paid.
+              </div>
 
-            <div className="mt-6 flex justify-between">
-              <button onClick={() => setStep(2)} className="text-gray-500 hover:text-gray-700 text-sm">← Back</button>
-              <button
-                onClick={handleConfirm}
-                disabled={isSubmitting}
-                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-colors"
-              >
-                {isSubmitting ? 'Reserving...' : 'Reserve Seat'}
-              </button>
-            </div>
-          </motion.div>
-        )}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                  ← Back
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={isSubmitting}
+                  className="flex-[2] bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+                >
+                  {isSubmitting
+                    ? 'Reserving...'
+                    : `Reserve ${seatCount} Seat${seatCount > 1 ? 's' : ''}`}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </main>
   );

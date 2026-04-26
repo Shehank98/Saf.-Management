@@ -363,8 +363,8 @@ model SharedSafariBooking {
   paymentId       String?
 
   pickupLocation String
-  pickupLat      Decimal @db.Decimal(10, 8)
-  pickupLng      Decimal @db.Decimal(11, 8)
+  pickupLat      Decimal? @db.Decimal(10, 8)
+  pickupLng      Decimal? @db.Decimal(11, 8)
   pickupTime     String
 
   mealIncluded Boolean  @default(false)
