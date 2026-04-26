@@ -61,6 +61,12 @@ export default function OwnerDashboard() {
     enabled: mounted,
   });
 
+  const { data: ownerLocations = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['owner-locations'],
+    queryFn: () => api.get('/owner/locations').then((r) => r.data.data),
+    enabled: mounted,
+  });
+
   const { data: jeepsData } = useQuery({
     queryKey: ['owner-jeeps'],
     queryFn: () => api.get('/shared-safari/owner/jeeps').then((r) => r.data.data),
@@ -399,8 +405,8 @@ export default function OwnerDashboard() {
                               className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
                             >
                               <option value="">Select a location...</option>
-                              {me?.safariOwner?.locations?.map((l) => (
-                                <option key={l.location.id} value={l.location.id}>{l.location.name}</option>
+                              {ownerLocations.map((l) => (
+                                <option key={l.id} value={l.id}>{l.name}</option>
                               ))}
                             </select>
                           </div>
@@ -656,8 +662,8 @@ export default function OwnerDashboard() {
                           className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
                         >
                           <option value="">Select location...</option>
-                          {me?.safariOwner?.locations?.map((l) => (
-                            <option key={l.location.id} value={l.location.id}>{l.location.name}</option>
+                          {ownerLocations.map((l) => (
+                            <option key={l.id} value={l.id}>{l.name}</option>
                           ))}
                         </select>
                       </div>

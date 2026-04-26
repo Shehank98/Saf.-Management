@@ -74,20 +74,48 @@ router.get('/vendor-payments', wrap(async (req: AuthRequest, res: any) => {
   const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
   if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
 
+  // Shared safari vendor payments (existing)
+  const sharedCondition = {
+    vendor: {
+      OR: [
+        { jeepAssignments: { some: { sharedJeep: { ownerId: owner.id } } } },
+        { guideAssignments: { some: { sharedJeep: { ownerId: owner.id } } } },
+      ],
+    },
+  };
+
+  // Private safari vendor payments (relatedSafariId set by assignVendors)
+  const ownerPrivateSafariIds = await prisma.privateSafari.findMany({
+    where: { ownerId: owner.id },
+    select: { id: true },
+  });
+  const safariIds = ownerPrivateSafariIds.map((s) => s.id);
+
+  const privateCondition = safariIds.length > 0
+    ? { relatedSafariId: { in: safariIds } }
+    : null;
+
   const payments = await prisma.vendorPayment.findMany({
     where: {
-      vendor: {
-        OR: [
-          { jeepAssignments: { some: { sharedJeep: { ownerId: owner.id } } } },
-          { guideAssignments: { some: { sharedJeep: { ownerId: owner.id } } } },
-        ],
-      },
+      OR: [
+        sharedCondition,
+        ...(privateCondition ? [privateCondition] : []),
+      ],
     },
     include: { vendor: { include: { user: { select: { name: true } } } } },
     orderBy: { createdAt: 'desc' },
   });
 
   res.json(successResponse(payments));
+}));
+
+router.get('/locations', wrap(async (req: AuthRequest, res: any) => {
+  const owner = await prisma.safariOwner.findUnique({
+    where: { userId: req.user!.userId },
+    include: { locations: { include: { location: { select: { id: true, name: true } } } } },
+  });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  res.json(successResponse(owner.locations.map((l) => l.location)));
 }));
 
 router.post('/vendor-payments/:id/mark-paid', wrap(async (_req: any, res: any) => {
