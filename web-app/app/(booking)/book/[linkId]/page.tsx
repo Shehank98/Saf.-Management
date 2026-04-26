@@ -4,9 +4,23 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { MealPreferences } from '@/components/booking/MealPreferences';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import type { PickupResult } from '@/components/booking/PickupSelector';
+
+const PickupSelector = dynamic(
+  () => import('@/components/booking/PickupSelector').then((m) => ({ default: m.PickupSelector })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-80 bg-gray-100 rounded-2xl animate-pulse flex items-center justify-center text-gray-400 text-sm">
+        Loading map…
+      </div>
+    ),
+  },
+);
 
 interface JeepData {
   id: string;
@@ -30,8 +44,7 @@ export default function BookingSeatPage() {
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [holdDeadline, setHoldDeadline] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
-  const [pickupAddress, setPickupAddress] = useState('');
-  const [pickupTime, setPickupTime] = useState('05:45 AM');
+  const [pickupResult, setPickupResult] = useState<PickupResult | null>(null);
   const [mealData, setMealData] = useState({
     mealIncluded: false, mealTypes: [] as string[], dietaryReqs: [] as string[], allergies: '',
   });
@@ -92,15 +105,17 @@ export default function BookingSeatPage() {
   const total = basePrice * seatCount + mealPrice + cameraPrice;
 
   const handleConfirm = async () => {
-    if (!jeep || selectedSeats.length === 0 || !pickupAddress.trim()) return;
+    if (!jeep || selectedSeats.length === 0 || !pickupResult?.isValid) return;
     setIsSubmitting(true);
     try {
       for (const seatNumber of selectedSeats) {
         await api.post('/shared-safari/reserve-seat', {
           jeepId: jeep.id,
           seatNumber,
-          pickupLocation: pickupAddress.trim(),
-          pickupTime,
+          pickupLocation: pickupResult?.address || 'Map pin',
+          pickupLat: pickupResult?.lat,
+          pickupLng: pickupResult?.lng,
+          pickupTime: pickupResult?.time || '5:45 AM',
           ...mealData,
           cameraNeeded,
         });
@@ -329,62 +344,41 @@ export default function BookingSeatPage() {
             </motion.div>
           )}
 
-          {/* ======== STEP 1: PICKUP DETAILS ======== */}
+          {/* ======== STEP 1: PICKUP LOCATION ======== */}
           {step === 1 && (
             <motion.div
               key="step1"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-white rounded-2xl shadow-sm border p-5 space-y-5"
+              className="bg-white rounded-2xl shadow-sm border p-5 space-y-4"
             >
               <div>
-                <h2 className="font-bold text-gray-900">Pickup Details</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Where should we pick you up?</p>
+                <h2 className="font-bold text-gray-900">Pickup Location</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Search for your hotel or tap the map — must be within 7 km of base
+                </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Pickup Address / Landmark <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={pickupAddress}
-                  onChange={(e) => setPickupAddress(e.target.value)}
-                  placeholder="e.g. Yala National Park Gate 1 entrance, Hotel name..."
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                />
-                <p className="text-xs text-gray-400 mt-1.5">Be as specific as possible — hotel name, gate, or nearby landmark.</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Pickup Time</label>
-                <select
-                  value={pickupTime}
-                  onChange={(e) => setPickupTime(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
-                >
-                  <option>05:30 AM</option>
-                  <option>05:45 AM</option>
-                  <option>06:00 AM</option>
-                  <option>06:15 AM</option>
-                  <option>06:30 AM</option>
-                  <option>11:30 AM</option>
-                  <option>11:45 AM</option>
-                  <option>12:00 PM</option>
-                </select>
-              </div>
+              <PickupSelector onSelect={setPickupResult} initialTime="5:45 AM" />
 
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setStep(0)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+                <button
+                  onClick={() => setStep(0)}
+                  className="flex-1 border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm hover:bg-gray-50 transition-colors"
+                >
                   ← Back
                 </button>
                 <button
-                  disabled={!pickupAddress.trim()}
+                  disabled={!pickupResult?.isValid}
                   onClick={() => setStep(2)}
                   className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl text-sm transition-colors"
                 >
-                  Next →
+                  {pickupResult && !pickupResult.isValid
+                    ? 'Location out of range'
+                    : !pickupResult
+                    ? 'Pin a location first'
+                    : 'Next →'}
                 </button>
               </div>
             </motion.div>
@@ -467,11 +461,15 @@ export default function BookingSeatPage() {
                   </div>
                   <div className="flex justify-between px-4 py-3">
                     <span className="text-gray-600">Pickup</span>
-                    <span className="font-medium text-gray-900 text-right max-w-40 truncate">{pickupAddress}</span>
+                    <span className="font-medium text-gray-900 text-right max-w-48 truncate">
+                      {pickupResult?.address
+                        ? pickupResult.address.split(',')[0]
+                        : `${pickupResult?.lat?.toFixed(5)}, ${pickupResult?.lng?.toFixed(5)}`}
+                    </span>
                   </div>
                   <div className="flex justify-between px-4 py-3">
                     <span className="text-gray-600">Pickup time</span>
-                    <span className="font-medium text-gray-900">{pickupTime}</span>
+                    <span className="font-medium text-gray-900">{pickupResult?.time}</span>
                   </div>
                 </div>
 
