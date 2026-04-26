@@ -6,7 +6,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
   logger.error('Unhandled error:', { message: err.message, stack: err.stack, path: req.path });
 
   const status = (err as { status?: number }).status || 500;
-  const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+  const message = (process.env.NODE_ENV === 'production' && status >= 500) ? 'Internal server error' : err.message;
 
   res.status(status).json(errorResponse(message));
 }
