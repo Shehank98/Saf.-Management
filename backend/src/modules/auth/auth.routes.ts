@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import * as ctrl from './auth.controller';
 import { authenticate } from '../../middleware/auth.middleware';
 import { prisma } from '../../config/database';
@@ -8,6 +9,27 @@ const router = Router();
 
 const wrap = (fn: Function) => (req: any, res: any, next: any) =>
   Promise.resolve(fn(req, res, next)).catch(next);
+
+// One-time admin bootstrap — safe: does nothing if a SUPER_ADMIN already exists
+router.get('/setup-admin', wrap(async (_req: any, res: any) => {
+  const existing = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
+  if (existing) {
+    return res.json({ message: 'Super admin already exists', email: existing.email });
+  }
+  const password = 'Admin@123';
+  const hashed = await bcrypt.hash(password, 12);
+  const admin = await prisma.user.create({
+    data: {
+      email: 'admin@safari.lk',
+      phone: '+94771000000',
+      password: hashed,
+      role: 'SUPER_ADMIN',
+      name: 'Super Admin',
+      approvalStatus: 'APPROVED',
+    },
+  });
+  res.json({ message: 'Super admin created', email: admin.email, password });
+}));
 
 // Public endpoint — registration form fetches available locations
 router.get('/locations', wrap(async (_req: any, res: any) => {
