@@ -46,7 +46,8 @@ export async function listAvailable(req: AuthRequest, res: Response): Promise<vo
   const { vendorType, date } = req.query;
   const vendors = await vendorsService.listAvailableVendors(
     vendorType as string | undefined,
-    date ? new Date(date as string) : undefined
+    date ? new Date(date as string) : undefined,
+    req.user?.userId,
   );
   res.json(successResponse(vendors));
 }

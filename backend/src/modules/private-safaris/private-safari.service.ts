@@ -47,9 +47,9 @@ export async function getPrivateSafari(id: string) {
     where: { id },
     include: {
       booking: { include: { customer: { include: { user: { select: { name: true, phone: true, email: true } } } } } },
-      jeepAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
-      guideAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
-      mealOrders: { include: { vendor: { include: { user: { select: { name: true } } } } } },
+      jeepAssignment: { include: { vendor: { include: { user: { select: { name: true, phone: true } } } } } },
+      guideAssignment: { include: { vendor: { include: { user: { select: { name: true, phone: true } } } } } },
+      mealOrders: { include: { vendor: { include: { user: { select: { name: true, phone: true } } } } } },
       location: { select: { id: true, name: true } },
     },
   });
@@ -61,46 +61,143 @@ export async function updateStatus(id: string, status: string) {
 
 export async function assignVendors(id: string, vendors: {
   jeepVendorId?: string;
-  guideVendorId?: string;
   jeepNumber?: string;
   rentalFee?: number;
+  guideVendorId?: string;
   guideFee?: number;
+  restaurantVendorId?: string;
+  mealCost?: number;
+  numberOfMeals?: number;
+  accommodationVendorId?: string;
+  accommodationCost?: number;
+  cameraVendorId?: string;
+  cameraCost?: number;
 }) {
-  const safari = await prisma.privateSafari.findUnique({ where: { id }, select: { locationId: true } });
-  if (safari?.locationId) {
-    if (vendors.jeepVendorId) {
-      const ok = await prisma.vendorLocation.findFirst({ where: { vendorId: vendors.jeepVendorId, locationId: safari.locationId } });
-      if (!ok) throw Object.assign(new Error('Jeep vendor does not service this location'), { status: 400 });
-    }
-    if (vendors.guideVendorId) {
-      const ok = await prisma.vendorLocation.findFirst({ where: { vendorId: vendors.guideVendorId, locationId: safari.locationId } });
-      if (!ok) throw Object.assign(new Error('Guide vendor does not service this location'), { status: 400 });
+  const safari = await prisma.privateSafari.findUnique({
+    where: { id },
+    select: { locationId: true, totalAmount: true },
+  });
+  if (!safari) throw Object.assign(new Error('Safari not found'), { status: 404 });
+
+  // Location validation for all vendor types that support it
+  const vendorsToCheck = [
+    { vendorId: vendors.jeepVendorId, label: 'Jeep vendor' },
+    { vendorId: vendors.guideVendorId, label: 'Guide vendor' },
+    { vendorId: vendors.restaurantVendorId, label: 'Restaurant vendor' },
+    { vendorId: vendors.accommodationVendorId, label: 'Accommodation vendor' },
+    { vendorId: vendors.cameraVendorId, label: 'Camera vendor' },
+  ];
+
+  if (safari.locationId) {
+    for (const { vendorId, label } of vendorsToCheck) {
+      if (vendorId) {
+        const ok = await prisma.vendorLocation.findFirst({
+          where: { vendorId, locationId: safari.locationId },
+        });
+        if (!ok) throw Object.assign(new Error(`${label} does not service this location`), { status: 400 });
+      }
     }
   }
 
-  const ops: any[] = [];
-
+  // Jeep assignment
   if (vendors.jeepVendorId && vendors.jeepNumber && vendors.rentalFee !== undefined) {
-    ops.push(
-      prisma.jeepAssignment.upsert({
-        where: { privateSafariId: id },
-        update: { vendorId: vendors.jeepVendorId, jeepNumber: vendors.jeepNumber, rentalFee: vendors.rentalFee },
-        create: { vendorId: vendors.jeepVendorId, privateSafariId: id, jeepNumber: vendors.jeepNumber, rentalFee: vendors.rentalFee },
-      })
-    );
+    await prisma.jeepAssignment.upsert({
+      where: { privateSafariId: id },
+      update: { vendorId: vendors.jeepVendorId, jeepNumber: vendors.jeepNumber, rentalFee: vendors.rentalFee },
+      create: { vendorId: vendors.jeepVendorId, privateSafariId: id, jeepNumber: vendors.jeepNumber, rentalFee: vendors.rentalFee },
+    });
+    await upsertVendorPayment(vendors.jeepVendorId, id, vendors.rentalFee, 'Jeep', 'JEEP');
   }
 
+  // Guide assignment
   if (vendors.guideVendorId && vendors.guideFee !== undefined) {
-    ops.push(
-      prisma.guideAssignment.upsert({
-        where: { privateSafariId: id },
-        update: { vendorId: vendors.guideVendorId, guideFee: vendors.guideFee },
-        create: { vendorId: vendors.guideVendorId, privateSafariId: id, guideFee: vendors.guideFee },
-      })
-    );
+    await prisma.guideAssignment.upsert({
+      where: { privateSafariId: id },
+      update: { vendorId: vendors.guideVendorId, guideFee: vendors.guideFee },
+      create: { vendorId: vendors.guideVendorId, privateSafariId: id, guideFee: vendors.guideFee },
+    });
+    await upsertVendorPayment(vendors.guideVendorId, id, vendors.guideFee, 'Guide', 'GUIDE');
   }
 
-  if (ops.length > 0) await prisma.$transaction(ops);
+  // Restaurant / meals
+  if (vendors.restaurantVendorId && vendors.mealCost !== undefined) {
+    await prisma.mealOrder.deleteMany({ where: { privateSafariId: id } });
+    await prisma.mealOrder.create({
+      data: {
+        vendorId: vendors.restaurantVendorId,
+        privateSafariId: id,
+        numberOfMeals: vendors.numberOfMeals || 1,
+        mealTypes: [],
+        dietaryReqs: {},
+        totalCost: vendors.mealCost,
+      },
+    });
+    await upsertVendorPayment(vendors.restaurantVendorId, id, vendors.mealCost, 'Meals', 'MEAL');
+  }
+
+  // Accommodation
+  if (vendors.accommodationVendorId && vendors.accommodationCost !== undefined) {
+    await prisma.privateSafari.update({
+      where: { id },
+      data: { accommodationId: vendors.accommodationVendorId },
+    });
+    await upsertVendorPayment(vendors.accommodationVendorId, id, vendors.accommodationCost, 'Accommodation', 'ACCOMMODATION');
+  }
+
+  // Camera rental
+  if (vendors.cameraVendorId && vendors.cameraCost !== undefined) {
+    await upsertVendorPayment(vendors.cameraVendorId, id, vendors.cameraCost, 'Camera Rental', 'CAMERA');
+  }
+
+  // Recalculate vendor costs and profit
+  await recalculateFinancials(id, safari.totalAmount);
+}
+
+async function upsertVendorPayment(
+  vendorId: string,
+  safariId: string,
+  amount: number,
+  description: string,
+  serviceType: string,
+) {
+  const existing = await prisma.vendorPayment.findFirst({
+    where: { vendorId, relatedSafariId: safariId, serviceType },
+  });
+  if (existing) {
+    await prisma.vendorPayment.update({
+      where: { id: existing.id },
+      data: { amount, description },
+    });
+  } else {
+    await prisma.vendorPayment.create({
+      data: { vendorId, amount, description, serviceType, relatedSafariId: safariId, status: 'PENDING' },
+    });
+  }
+}
+
+async function recalculateFinancials(safariId: string, totalAmount: any) {
+  const [jeep, guide, meals, payments] = await Promise.all([
+    prisma.jeepAssignment.findUnique({ where: { privateSafariId: safariId }, select: { rentalFee: true } }),
+    prisma.guideAssignment.findUnique({ where: { privateSafariId: safariId }, select: { guideFee: true } }),
+    prisma.mealOrder.findMany({ where: { privateSafariId: safariId }, select: { totalCost: true } }),
+    prisma.vendorPayment.findMany({
+      where: { relatedSafariId: safariId, serviceType: { in: ['ACCOMMODATION', 'CAMERA'] } },
+      select: { amount: true },
+    }),
+  ]);
+
+  const vendorCosts =
+    Number(jeep?.rentalFee || 0) +
+    Number(guide?.guideFee || 0) +
+    meals.reduce((s, m) => s + Number(m.totalCost), 0) +
+    payments.reduce((s, p) => s + Number(p.amount), 0);
+
+  const profit = Number(totalAmount) - vendorCosts;
+
+  await prisma.privateSafari.update({
+    where: { id: safariId },
+    data: { vendorCosts, profit },
+  });
 }
 
 export async function getOwnerSafaris(ownerId: string, status?: string) {
@@ -112,6 +209,15 @@ export async function getOwnerSafaris(ownerId: string, status?: string) {
     include: {
       booking: { include: { customer: { include: { user: { select: { name: true, phone: true, email: true } } } } } },
       location: { select: { id: true, name: true } },
+      jeepAssignment: {
+        include: { vendor: { include: { user: { select: { name: true } } } } },
+      },
+      guideAssignment: {
+        include: { vendor: { include: { user: { select: { name: true } } } } },
+      },
+      mealOrders: {
+        include: { vendor: { include: { user: { select: { name: true } } } } },
+      },
     },
     orderBy: { safariDate: 'desc' },
   });

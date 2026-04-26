@@ -4,6 +4,7 @@ import { requireRole } from '../../middleware/role.middleware';
 import { successResponse, errorResponse, AuthRequest } from '../../types';
 import * as service from './private-safari.service';
 import { prisma } from '../../config/database';
+import { sendWhatsApp } from '../notifications/whatsapp.service';
 
 const router = Router();
 const wrap = (fn: Function) => (req: any, res: any, next: any) =>
@@ -32,6 +33,32 @@ router.get('/:id', authenticate, wrap(async (req: any, res: any) => {
 
 router.patch('/:id/status', authenticate, requireRole('SAFARI_OWNER', 'SUPER_ADMIN'), wrap(async (req: any, res: any) => {
   const safari = await service.updateStatus(req.params.id, req.body.status);
+
+  if (req.body.status === 'COMPLETED') {
+    const full = await prisma.privateSafari.findUnique({
+      where: { id: req.params.id },
+      select: {
+        customerPhone: true,
+        customerName: true,
+        safariDate: true,
+        booking: { include: { customer: { include: { user: { select: { name: true, phone: true } } } } } },
+      },
+    });
+    const phone = full?.customerPhone || full?.booking?.customer?.user?.phone;
+    const name  = full?.customerName  || full?.booking?.customer?.user?.name || 'Valued Customer';
+    if (phone) {
+      sendWhatsApp({
+        to: phone,
+        template: 'review_request',
+        data: {
+          customerName: name,
+          date: full?.safariDate ? new Date(full.safariDate).toLocaleDateString('en-GB') : '',
+          reviewLink: '',
+        },
+      }).catch(() => {});
+    }
+  }
+
   res.json(successResponse(safari));
 }));
 

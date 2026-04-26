@@ -457,6 +457,7 @@ model VendorPayment {
 
   amount          Decimal
   description     String
+  serviceType     String?
   relatedSafariId String?
   paymentProof    String?
   status          String    @default("PENDING")
