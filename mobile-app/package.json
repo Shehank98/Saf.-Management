@@ -4,7 +4,7 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
+    "start": "echo 'Use EAS Build — run: eas build -p android --profile preview'",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "lint": "eslint src --ext .ts,.tsx",
