@@ -213,12 +213,14 @@ export default function RegisterPage() {
                           icon: '🏕️',
                           label: 'Safari Owner',
                           desc: 'I run safari tours and want to manage bookings, vendors, and trips.',
+                          fee: 'LKR 2,500 / month',
                         },
                         {
                           value: 'VENDOR',
                           icon: '🔧',
                           label: 'Service Provider',
                           desc: 'I provide jeeps, guiding, food, accommodation, or camera rentals.',
+                          fee: null,
                         },
                       ].map((opt) => (
                         <label key={opt.value} className="cursor-pointer block">
@@ -244,6 +246,11 @@ export default function RegisterPage() {
                                   </div>
                                 </div>
                                 <p className="text-sm text-gray-500">{opt.desc}</p>
+                                {opt.fee && (
+                                  <p className="text-xs text-orange-600 font-medium mt-1.5">
+                                    Subscription: {opt.fee}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>

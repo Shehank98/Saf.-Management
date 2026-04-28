@@ -68,6 +68,28 @@ router.patch('/users/:id/reject', wrap(async (req: any, res: any) => {
   res.json(successResponse(user, 'User rejected'));
 }));
 
+router.patch('/users/:id/email', wrap(async (req: any, res: any) => {
+  const { email } = req.body;
+  if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    res.status(400).json(errorResponse('Valid email required'));
+    return;
+  }
+  const normalized = email.trim().toLowerCase();
+  const existing = await prisma.user.findFirst({
+    where: { email: normalized, NOT: { id: req.params.id } },
+  });
+  if (existing) {
+    res.status(409).json(errorResponse('Email already in use by another account'));
+    return;
+  }
+  const user = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { email: normalized },
+    select: { id: true, name: true, email: true, role: true },
+  });
+  res.json(successResponse(user, 'Email updated'));
+}));
+
 // ==================== FEATURE MANAGEMENT ====================
 
 router.get('/users/:id/features', wrap(async (req: any, res: any) => {

@@ -34,6 +34,8 @@ export default function AdminDashboard() {
   const [editLocName, setEditLocName] = useState('');
   const [expandedVendorId, setExpandedVendorId] = useState<string | null>(null);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('PAYMENT_PENDING');
+  const [editEmailUserId, setEditEmailUserId] = useState<string | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState('');
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -157,6 +159,16 @@ export default function AdminDashboard() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-locations'] });
       setEditLocId(null);
+    },
+  });
+
+  const changeEmailMutation = useMutation({
+    mutationFn: ({ userId, email }: { userId: string; email: string }) =>
+      api.patch(`/admin/users/${userId}/email`, { email }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-all-users'] });
+      setEditEmailUserId(null);
+      setEditEmailValue('');
     },
   });
 
@@ -367,7 +379,41 @@ export default function AdminDashboard() {
                         <tr key={u.id} className="border-b hover:bg-gray-50">
                           <td className="py-3">
                             <p className="font-medium">{u.name}</p>
-                            <p className="text-xs text-gray-400">{u.email}</p>
+                            {editEmailUserId === u.id ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <input
+                                  value={editEmailValue}
+                                  onChange={(e) => setEditEmailValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') changeEmailMutation.mutate({ userId: u.id, email: editEmailValue });
+                                    if (e.key === 'Escape') setEditEmailUserId(null);
+                                  }}
+                                  className="text-xs border border-blue-300 rounded px-2 py-0.5 w-40 outline-none focus:ring-1 focus:ring-blue-400"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => changeEmailMutation.mutate({ userId: u.id, email: editEmailValue })}
+                                  disabled={changeEmailMutation.isPending}
+                                  className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded disabled:opacity-50"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditEmailUserId(null)}
+                                  className="text-xs text-gray-400 hover:text-gray-600 px-1"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setEditEmailUserId(u.id); setEditEmailValue(u.email); }}
+                                className="text-xs text-gray-400 hover:text-blue-600 hover:underline mt-0.5 text-left"
+                                title="Click to change email"
+                              >
+                                {u.email} ✎
+                              </button>
+                            )}
                           </td>
                           <td className="py-3 text-gray-500 text-xs">{u.role}</td>
                           <td className="py-3 text-gray-500 text-xs">
