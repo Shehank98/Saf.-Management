@@ -208,7 +208,7 @@ export async function getMe(userId: string) {
       approvalNote: true,
       features: { select: { feature: true, enabled: true } },
       vendor: { select: { businessName: true, vendorType: true, subscriptionStatus: true, locations: { select: { location: { select: { id: true, name: true } } } } } },
-      safariOwner: { select: { companyName: true, subscriptionStatus: true, locations: { select: { location: { select: { id: true, name: true } } } } } },
+      safariOwner: { select: { companyName: true, subscriptionStatus: true, subscriptionEnd: true, locations: { select: { location: { select: { id: true, name: true } } } } } },
     },
   });
   if (!user) throw Object.assign(new Error('User not found'), { status: 404 });

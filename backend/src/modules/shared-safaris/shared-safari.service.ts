@@ -362,7 +362,7 @@ export async function assignVendors(
   if (ops.length > 0) await prisma.$transaction(ops);
 }
 
-export async function getPaymentTracking(jeepId: string) {
+export async function getPaymentTracking(jeepId: string, requestingOwnerId?: string) {
   const jeep = await prisma.sharedJeep.findUnique({
     where: { id: jeepId },
     include: {
@@ -377,6 +377,9 @@ export async function getPaymentTracking(jeepId: string) {
   });
 
   if (!jeep) return null;
+  if (requestingOwnerId && jeep.ownerId !== requestingOwnerId) {
+    throw Object.assign(new Error('Forbidden'), { status: 403 });
+  }
 
   const now = new Date();
   const seats = jeep.bookings.map((b) => {

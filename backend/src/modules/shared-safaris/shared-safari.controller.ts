@@ -134,7 +134,14 @@ export async function getMyBookings(req: Request, res: Response): Promise<void> 
 }
 
 export async function getPaymentTracking(req: AuthRequest, res: Response): Promise<void> {
-  const result = await service.getPaymentTracking(req.params.jeepId);
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+  let requestingOwnerId: string | undefined;
+  if (!isSuperAdmin) {
+    const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
+    if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+    requestingOwnerId = owner.id;
+  }
+  const result = await service.getPaymentTracking(req.params.jeepId, requestingOwnerId);
   if (!result) { res.status(404).json(errorResponse('Safari not found')); return; }
   res.json(successResponse(result));
 }

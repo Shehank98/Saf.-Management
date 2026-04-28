@@ -186,6 +186,7 @@ model SafariOwner {
   priceHalfDayMorning   Decimal?
   priceHalfDayAfternoon Decimal?
   mealPrice             Decimal?
+  googleReviewLink      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -400,11 +401,14 @@ model JeepAssignment {
   rentalFee     Decimal
   paymentStatus String    @default("PENDING")
   paidAt        DateTime?
+  jobStatus     String    @default("PENDING")
+  respondedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([vendorId, paymentStatus])
+  @@index([vendorId, jobStatus])
 }
 
 model GuideAssignment {
@@ -421,11 +425,14 @@ model GuideAssignment {
   guideFee      Decimal
   paymentStatus String    @default("PENDING")
   paidAt        DateTime?
+  jobStatus     String    @default("PENDING")
+  respondedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([vendorId, paymentStatus])
+  @@index([vendorId, jobStatus])
 }
 
 model MealOrder {

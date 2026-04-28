@@ -178,6 +178,34 @@ export async function getVendorJobs(userId: string) {
   return { jeepJobs, guideJobs };
 }
 
+export async function respondToJeepJob(userId: string, assignmentId: string, status: 'ACCEPTED' | 'DECLINED') {
+  const vendor = await prisma.vendor.findUnique({ where: { userId } });
+  if (!vendor) throw Object.assign(new Error('Vendor not found'), { status: 404 });
+
+  const assignment = await prisma.jeepAssignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment) throw Object.assign(new Error('Assignment not found'), { status: 404 });
+  if (assignment.vendorId !== vendor.id) throw Object.assign(new Error('Forbidden'), { status: 403 });
+
+  return prisma.jeepAssignment.update({
+    where: { id: assignmentId },
+    data: { jobStatus: status, respondedAt: new Date() },
+  });
+}
+
+export async function respondToGuideJob(userId: string, assignmentId: string, status: 'ACCEPTED' | 'DECLINED') {
+  const vendor = await prisma.vendor.findUnique({ where: { userId } });
+  if (!vendor) throw Object.assign(new Error('Vendor not found'), { status: 404 });
+
+  const assignment = await prisma.guideAssignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment) throw Object.assign(new Error('Assignment not found'), { status: 404 });
+  if (assignment.vendorId !== vendor.id) throw Object.assign(new Error('Forbidden'), { status: 403 });
+
+  return prisma.guideAssignment.update({
+    where: { id: assignmentId },
+    data: { jobStatus: status, respondedAt: new Date() },
+  });
+}
+
 export async function listAvailableVendors(vendorType?: string, date?: Date, ownerUserId?: string) {
   // If called by an owner, only show vendors who share at least one location with them
   let sharedLocationIds: string[] | undefined;

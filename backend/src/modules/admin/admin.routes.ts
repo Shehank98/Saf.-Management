@@ -37,8 +37,24 @@ router.get('/vendors', wrap(async (req: any, res: any) => {
 }));
 
 router.get('/commissions', wrap(async (req: any, res: any) => {
-  const commissions = await service.getCommissions(req.query.status as string | undefined);
+  const commissions = await service.getCommissionDetails(req.query.status as string | undefined);
   res.json(successResponse(commissions));
+}));
+
+router.patch('/commissions/:id/collect', wrap(async (req: any, res: any) => {
+  const result = await service.collectCommission(req.params.id);
+  res.json(successResponse(result, 'Commission marked as collected'));
+}));
+
+router.patch('/owners/:id/settings', wrap(async (req: any, res: any) => {
+  const { sharedSafariCommission, depositPercentage, monthlyFee, googleReviewLink } = req.body;
+  const result = await service.updateOwnerSettings(req.params.id, {
+    sharedSafariCommission,
+    depositPercentage,
+    monthlyFee,
+    googleReviewLink,
+  });
+  res.json(successResponse(result, 'Owner settings updated'));
 }));
 
 router.get('/analytics', wrap(async (req: any, res: any) => {

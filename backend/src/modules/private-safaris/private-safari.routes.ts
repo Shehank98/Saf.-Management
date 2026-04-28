@@ -33,7 +33,14 @@ router.get('/:id', authenticate, wrap(async (req: any, res: any) => {
 
 router.patch('/:id/status', authenticate, requireRole('SAFARI_OWNER', 'SUPER_ADMIN'), wrap(async (req: any, res: any) => {
   const newStatus: string = req.body.status;
-  const safari = await service.updateStatus(req.params.id, newStatus);
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+  let requestingOwnerId: string | undefined;
+  if (!isSuperAdmin) {
+    const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
+    if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+    requestingOwnerId = owner.id;
+  }
+  const safari = await service.updateStatus(req.params.id, newStatus, requestingOwnerId);
 
   const NOTIFY_STATUSES = ['DEPOSIT_PENDING', 'CONFIRMED', 'COMPLETED'];
   if (NOTIFY_STATUSES.includes(newStatus)) {
@@ -90,7 +97,9 @@ router.patch('/:id/status', authenticate, requireRole('SAFARI_OWNER', 'SUPER_ADM
 }));
 
 router.patch('/:id/assign-vendors', authenticate, requireRole('SAFARI_OWNER'), wrap(async (req: any, res: any) => {
-  await service.assignVendors(req.params.id, req.body);
+  const owner = await prisma.safariOwner.findUnique({ where: { userId: req.user!.userId } });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  await service.assignVendors(req.params.id, req.body, owner.id);
   res.json(successResponse(null, 'Vendors assigned'));
 }));
 

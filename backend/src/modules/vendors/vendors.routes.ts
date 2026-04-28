@@ -15,5 +15,7 @@ router.get('/earnings', wrap(ctrl.getEarnings));
 router.get('/jobs', wrap(ctrl.getJobs));
 router.patch('/availability', wrap(ctrl.updateAvailability));
 router.post('/subscription/pay', wrap(ctrl.paySubscription));
+router.patch('/jobs/jeep/:assignmentId/respond', wrap(ctrl.respondToJeepJob));
+router.patch('/jobs/guide/:assignmentId/respond', wrap(ctrl.respondToGuideJob));
 
 export { router as vendorRouter };

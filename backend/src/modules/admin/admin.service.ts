@@ -191,6 +191,42 @@ export async function rejectUser(userId: string, note?: string) {
   });
 }
 
+export async function updateOwnerSettings(
+  ownerId: string,
+  settings: { sharedSafariCommission?: number; depositPercentage?: number; monthlyFee?: number; googleReviewLink?: string }
+) {
+  const owner = await prisma.safariOwner.findUnique({ where: { id: ownerId } });
+  if (!owner) throw Object.assign(new Error('Owner not found'), { status: 404 });
+  return prisma.safariOwner.update({
+    where: { id: ownerId },
+    data: {
+      ...(settings.sharedSafariCommission !== undefined ? { sharedSafariCommission: settings.sharedSafariCommission } : {}),
+      ...(settings.depositPercentage !== undefined ? { depositPercentage: settings.depositPercentage } : {}),
+      ...(settings.monthlyFee !== undefined ? { monthlyFee: settings.monthlyFee } : {}),
+      ...(settings.googleReviewLink !== undefined ? { googleReviewLink: settings.googleReviewLink } : {}),
+    },
+  });
+}
+
+export async function getCommissionDetails(status?: string) {
+  return prisma.superAdminCommission.findMany({
+    where: status ? { status } : {},
+    include: { sharedJeep: { select: { safariDate: true, safariType: true, owner: { select: { companyName: true } } } } } as any,
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+}
+
+export async function collectCommission(id: string) {
+  const commission = await prisma.superAdminCommission.findUnique({ where: { id } });
+  if (!commission) throw Object.assign(new Error('Commission not found'), { status: 404 });
+  if (commission.status === 'COLLECTED') throw Object.assign(new Error('Already collected'), { status: 400 });
+  return prisma.superAdminCommission.update({
+    where: { id },
+    data: { status: 'COLLECTED', collectedAt: new Date() },
+  });
+}
+
 export async function getUserFeatures(userId: string) {
   return prisma.userFeature.findMany({ where: { userId } });
 }

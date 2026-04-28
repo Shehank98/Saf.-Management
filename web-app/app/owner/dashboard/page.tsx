@@ -15,6 +15,7 @@ interface MeData {
   safariOwner?: {
     companyName: string;
     subscriptionStatus: string;
+    subscriptionEnd: string | null;
     locations: { location: { id: string; name: string; } }[];
   };
 }
@@ -271,14 +272,37 @@ export default function OwnerDashboard() {
       </div>
 
       <div className="p-6 max-w-5xl mx-auto">
-        {/* Subscription warning */}
-        {me?.safariOwner?.subscriptionStatus && me.safariOwner.subscriptionStatus !== 'ACTIVE' && (
-          <motion.div {...fadeIn} className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <p className="text-amber-800 text-sm font-medium">
-              ⚠️ Subscription {me.safariOwner.subscriptionStatus.toLowerCase()}. Contact Super Admin.
-            </p>
-          </motion.div>
-        )}
+        {/* Subscription banner */}
+        {me?.safariOwner?.subscriptionStatus && (() => {
+          const s = me.safariOwner!;
+          const daysLeft = s.subscriptionEnd
+            ? Math.ceil((new Date(s.subscriptionEnd).getTime() - Date.now()) / 86400000)
+            : null;
+          if (s.subscriptionStatus === 'EXPIRED')
+            return (
+              <motion.div {...fadeIn} className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                <p className="text-red-800 text-sm font-semibold">🔴 Subscription Expired</p>
+                <p className="text-red-700 text-xs mt-0.5">Your account is inactive. Contact Super Admin to renew your subscription.</p>
+              </motion.div>
+            );
+          if (s.subscriptionStatus === 'PENDING_PAYMENT')
+            return (
+              <motion.div {...fadeIn} className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                <p className="text-amber-800 text-sm font-semibold">⏳ Subscription Pending Payment</p>
+                <p className="text-amber-700 text-xs mt-0.5">Contact Super Admin to complete your subscription payment (LKR 2,500/month).</p>
+              </motion.div>
+            );
+          if (s.subscriptionStatus === 'ACTIVE' && daysLeft !== null && daysLeft <= 14)
+            return (
+              <motion.div {...fadeIn} className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="text-yellow-800 text-sm font-semibold">⚠️ Subscription Expiring Soon</p>
+                <p className="text-yellow-700 text-xs mt-0.5">
+                  Expires on {new Date(s.subscriptionEnd!).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left). Contact Super Admin to renew.
+                </p>
+              </motion.div>
+            );
+          return null;
+        })()}
 
         {/* No features */}
         {features.length === 0 && (

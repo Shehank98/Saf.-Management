@@ -42,6 +42,26 @@ export async function getJobs(req: AuthRequest, res: Response): Promise<void> {
   res.json(successResponse(data));
 }
 
+export async function respondToJeepJob(req: AuthRequest, res: Response): Promise<void> {
+  const { status } = req.body as { status: 'ACCEPTED' | 'DECLINED' };
+  if (!['ACCEPTED', 'DECLINED'].includes(status)) {
+    res.status(400).json(errorResponse('status must be ACCEPTED or DECLINED'));
+    return;
+  }
+  const result = await vendorsService.respondToJeepJob(req.user!.userId, req.params.assignmentId, status);
+  res.json(successResponse(result, `Job ${status.toLowerCase()}`));
+}
+
+export async function respondToGuideJob(req: AuthRequest, res: Response): Promise<void> {
+  const { status } = req.body as { status: 'ACCEPTED' | 'DECLINED' };
+  if (!['ACCEPTED', 'DECLINED'].includes(status)) {
+    res.status(400).json(errorResponse('status must be ACCEPTED or DECLINED'));
+    return;
+  }
+  const result = await vendorsService.respondToGuideJob(req.user!.userId, req.params.assignmentId, status);
+  res.json(successResponse(result, `Job ${status.toLowerCase()}`));
+}
+
 export async function listAvailable(req: AuthRequest, res: Response): Promise<void> {
   const { vendorType, date } = req.query;
   const vendors = await vendorsService.listAvailableVendors(

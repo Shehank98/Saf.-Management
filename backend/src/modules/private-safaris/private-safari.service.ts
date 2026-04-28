@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database';
+import { sendWhatsApp } from '../notifications/whatsapp.service';
 
 export async function createInquiry(ownerId: string, data: {
   safariDate: string;
@@ -55,7 +56,12 @@ export async function getPrivateSafari(id: string) {
   });
 }
 
-export async function updateStatus(id: string, status: string) {
+export async function updateStatus(id: string, status: string, requestingOwnerId?: string) {
+  if (requestingOwnerId) {
+    const safari = await prisma.privateSafari.findUnique({ where: { id }, select: { ownerId: true } });
+    if (!safari) throw Object.assign(new Error('Safari not found'), { status: 404 });
+    if (safari.ownerId !== requestingOwnerId) throw Object.assign(new Error('Forbidden'), { status: 403 });
+  }
   return prisma.privateSafari.update({ where: { id }, data: { status: status as any } });
 }
 
@@ -72,12 +78,15 @@ export async function assignVendors(id: string, vendors: {
   accommodationCost?: number;
   cameraVendorId?: string;
   cameraCost?: number;
-}) {
+}, requestingOwnerId?: string) {
   const safari = await prisma.privateSafari.findUnique({
     where: { id },
-    select: { locationId: true, totalAmount: true },
+    select: { locationId: true, totalAmount: true, ownerId: true },
   });
   if (!safari) throw Object.assign(new Error('Safari not found'), { status: 404 });
+  if (requestingOwnerId && safari.ownerId !== requestingOwnerId) {
+    throw Object.assign(new Error('Forbidden'), { status: 403 });
+  }
 
   // Location validation for all vendor types that support it
   const vendorsToCheck = [
@@ -151,6 +160,51 @@ export async function assignVendors(id: string, vendors: {
 
   // Recalculate vendor costs and profit
   await recalculateFinancials(id, safari.totalAmount);
+
+  // Notify newly assigned vendors via WhatsApp (fire-and-forget)
+  const safariFull = await prisma.privateSafari.findUnique({
+    where: { id },
+    select: { safariDate: true, safariType: true, numberOfGuests: true, specialRequests: true },
+  });
+  if (safariFull) {
+    const webAppUrl = process.env.WEB_APP_URL || 'https://app.safaripro.lk';
+    const dateStr = new Date(safariFull.safariDate).toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const assignedVendorIds = [
+      vendors.jeepVendorId, vendors.guideVendorId,
+      vendors.restaurantVendorId, vendors.accommodationVendorId, vendors.cameraVendorId,
+    ].filter(Boolean) as string[];
+
+    const vendorUsers = await prisma.vendor.findMany({
+      where: { id: { in: assignedVendorIds } },
+      include: { user: { select: { name: true, phone: true } } },
+    });
+
+    for (const v of vendorUsers) {
+      if (!v.user.phone) continue;
+      const fee =
+        v.id === vendors.jeepVendorId ? vendors.rentalFee :
+        v.id === vendors.guideVendorId ? vendors.guideFee :
+        v.id === vendors.restaurantVendorId ? vendors.mealCost :
+        v.id === vendors.accommodationVendorId ? vendors.accommodationCost :
+        vendors.cameraCost;
+
+      sendWhatsApp({
+        to: v.user.phone,
+        template: 'vendor_job_assigned',
+        data: {
+          vendorName: v.user.name,
+          safariDate: dateStr,
+          safariType: safariFull.safariType,
+          numberOfGuests: safariFull.numberOfGuests,
+          fee: fee ? `LKR ${fee.toLocaleString()}` : 'TBD',
+          specialRequirements: safariFull.specialRequests || 'None',
+          dashboardLink: `${webAppUrl}/vendor/dashboard`,
+        },
+      }).catch(() => {});
+    }
+  }
 }
 
 async function upsertVendorPayment(

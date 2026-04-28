@@ -190,6 +190,28 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>) => object> = {
       },
     ],
   }),
+
+  vendor_job_assigned: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.vendorName) },
+          { type: 'text', text: String(data.safariDate) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.numberOfGuests) },
+          { type: 'text', text: String(data.fee) },
+          { type: 'text', text: String(data.specialRequirements || 'None') },
+        ],
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: 0,
+        parameters: [{ type: 'text', text: String(data.dashboardLink) }],
+      },
+    ],
+  }),
 };
 
 export async function sendWhatsApp({ to, template, data, recipientId }: WhatsAppMessage): Promise<void> {

@@ -79,7 +79,7 @@ export async function checkPostSafariReviews(): Promise<void> {
     },
   });
 
-  const googleReviewLink = process.env.GOOGLE_REVIEW_LINK || 'https://g.page/r/your-review-link';
+  const platformReviewLink = process.env.GOOGLE_REVIEW_LINK || 'https://g.page/r/your-review-link';
 
   for (const jeep of jeepsForReview) {
     try {
@@ -96,7 +96,7 @@ export async function checkPostSafariReviews(): Promise<void> {
           data: {
             customerName: booking.customer.user.name,
             date: jeep.safariDate.toDateString(),
-            reviewLink: googleReviewLink,
+            reviewLink: platformReviewLink,
           },
         }).catch(() => {});
       }
@@ -104,6 +104,47 @@ export async function checkPostSafariReviews(): Promise<void> {
       logger.info(`Review requests sent for jeep ${jeep.id} (${jeep.bookings.length} customers)`);
     } catch (err) {
       logger.error(`Failed to send review request for jeep ${jeep.id}:`, err);
+    }
+  }
+
+  // Private safari review requests — use the owner's Google review link
+  const privateSafariReviewStart = addHours(now, -(8 + 8));
+  const privateSafariReviewEnd   = addHours(now, -(8 + 6));
+
+  const privateSafarisForReview = await prisma.privateSafari.findMany({
+    where: {
+      safariDate: { gte: privateSafariReviewStart, lte: privateSafariReviewEnd },
+      status: 'COMPLETED',
+    },
+    include: {
+      owner: { select: { googleReviewLink: true } },
+      booking: { include: { customer: { include: { user: { select: { name: true, phone: true, id: true } } } } } },
+    },
+  });
+
+  for (const safari of privateSafarisForReview) {
+    try {
+      const reviewLink = (safari.owner as any).googleReviewLink || platformReviewLink;
+      const phone = safari.customerPhone || safari.booking?.customer?.user?.phone;
+      const name  = safari.customerName  || safari.booking?.customer?.user?.name || 'Valued Customer';
+      const customerId = safari.booking?.customer?.userId;
+
+      if (!phone) continue;
+
+      await sendWhatsApp({
+        to: phone,
+        template: 'review_request',
+        recipientId: customerId,
+        data: {
+          customerName: name,
+          date: safari.safariDate.toDateString(),
+          reviewLink,
+        },
+      }).catch(() => {});
+
+      logger.info(`Private safari review request sent for safari ${safari.id}`);
+    } catch (err) {
+      logger.error(`Failed to send private safari review for ${safari.id}:`, err);
     }
   }
 }
