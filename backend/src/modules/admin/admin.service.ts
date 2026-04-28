@@ -209,12 +209,25 @@ export async function updateOwnerSettings(
 }
 
 export async function getCommissionDetails(status?: string) {
-  return prisma.superAdminCommission.findMany({
+  const commissions = await prisma.superAdminCommission.findMany({
     where: status ? { status } : {},
-    include: { sharedJeep: { select: { safariDate: true, safariType: true, owner: { select: { companyName: true } } } } } as any,
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
+
+  const jeepIds = [...new Set(commissions.map((c) => c.sharedJeepId).filter(Boolean))];
+  const jeeps = jeepIds.length
+    ? await prisma.sharedJeep.findMany({
+        where: { id: { in: jeepIds } },
+        select: {
+          id: true, safariDate: true, safariType: true,
+          owner: { select: { companyName: true } },
+        },
+      })
+    : [];
+  const jeepMap = new Map(jeeps.map((j) => [j.id, j]));
+
+  return commissions.map((c) => ({ ...c, sharedJeep: jeepMap.get(c.sharedJeepId) ?? null }));
 }
 
 export async function collectCommission(id: string) {
