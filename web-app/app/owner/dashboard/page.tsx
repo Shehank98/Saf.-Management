@@ -7,6 +7,17 @@ import { api } from '@/lib/api';
 import { formatCurrency, formatShortDate } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert';
+import { StatCard } from '@/components/ui/stat-card';
+import { DashboardShell } from '@/components/layout/DashboardShell';
+import { NavItem } from '@/components/layout/Sidebar';
+import {
+  LayoutDashboard, Globe, Car, Wallet, Settings, LogOut, Lock,
+  Plus, AlertCircle, Clock, CalendarClock, Sun, Sunrise, Sunset,
+  MapPin, User, Phone, Mail, FileText, DollarSign, Tag, Check,
+  ArrowRight, Flag, Users, Compass, UtensilsCrossed, BedDouble, Camera,
+  TrendingUp, Copy, CheckCircle2,
+} from 'lucide-react';
 
 interface UserFeature { feature: string; enabled: boolean; }
 interface MeData {
@@ -188,11 +199,12 @@ export default function OwnerDashboard() {
   const has      = (f: string) => features.includes(f);
   const stats    = dashData?.stats;
 
-  const tabs: { key: string; label: string; icon: string }[] = [{ key: 'overview', label: 'Overview', icon: '🏠' }];
-  if (has('PRIVATE_SAFARI'))   tabs.push({ key: 'private', label: 'Private Safaris', icon: '👑' });
-  if (has('SHARED_TRIPS'))     tabs.push({ key: 'shared',  label: 'Shared Safaris',  icon: '🚙' });
-  if (has('VENDOR_LISTINGS'))  tabs.push({ key: 'vendors', label: 'Vendor Payments', icon: '💳' });
-  tabs.push({ key: 'settings', label: 'Booking Settings', icon: '⚙️' });
+  const navItems: NavItem[] = [{ key: 'overview', label: 'Overview', icon: LayoutDashboard }];
+  if (has('PRIVATE_SAFARI'))   navItems.push({ key: 'private', label: 'Private Safaris', icon: Globe });
+  if (has('SHARED_TRIPS'))     navItems.push({ key: 'shared',  label: 'Shared Safaris',  icon: Car });
+  if (has('VENDOR_LISTINGS'))  navItems.push({ key: 'vendors', label: 'Vendor Payments', icon: Wallet });
+  navItems.push({ key: 'settings', label: 'Booking Settings', icon: Settings });
+  navItems.push({ key: 'logout', label: 'Sign Out', icon: LogOut, danger: true });
 
   const handleCreatePrivate = () => {
     const { safariDate, numberOfGuests, totalAmount, customerName, locationId } = newPrivateForm;
@@ -234,44 +246,22 @@ export default function OwnerDashboard() {
     CONFIRMED:       'COMPLETED',
   };
 
+  const handleTabChange = (key: string) => {
+    if (key === 'logout') { localStorage.clear(); window.location.href = '/login'; return; }
+    setTab(key);
+  };
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            {me?.safariOwner?.companyName || dashData?.owner?.companyName || 'Owner Dashboard'}
-          </h1>
-          <p className="text-sm text-gray-500">Safari Owner Portal</p>
-        </div>
-        <button
-          onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
-          className="text-sm text-red-600 hover:text-red-700 font-medium"
-        >
-          Logout
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white border-b px-6">
-        <div className="flex overflow-x-auto">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-5 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                tab === t.key
-                  ? 'border-green-600 text-green-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-6 max-w-5xl mx-auto">
+    <DashboardShell
+      title={me?.safariOwner?.companyName || dashData?.owner?.companyName || 'Owner Dashboard'}
+      navItems={navItems}
+      activeTab={tab}
+      onTabChange={handleTabChange}
+      userName={me?.name}
+      userRole={me?.role}
+      onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
+    >
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Subscription banner */}
         {me?.safariOwner?.subscriptionStatus && (() => {
           const s = me.safariOwner!;
@@ -280,26 +270,21 @@ export default function OwnerDashboard() {
             : null;
           if (s.subscriptionStatus === 'EXPIRED')
             return (
-              <motion.div {...fadeIn} className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-                <p className="text-red-800 text-sm font-semibold">🔴 Subscription Expired</p>
-                <p className="text-red-700 text-xs mt-0.5">Your account is inactive. Contact Super Admin to renew your subscription.</p>
-              </motion.div>
+              <Alert variant="destructive" icon={<AlertCircle className="w-4 h-4" />} title="Subscription Expired">
+                Your account is inactive. Contact Super Admin to renew your subscription.
+              </Alert>
             );
           if (s.subscriptionStatus === 'PENDING_PAYMENT')
             return (
-              <motion.div {...fadeIn} className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                <p className="text-amber-800 text-sm font-semibold">⏳ Subscription Pending Payment</p>
-                <p className="text-amber-700 text-xs mt-0.5">Contact Super Admin to complete your subscription payment (LKR 2,500/month).</p>
-              </motion.div>
+              <Alert variant="warning" icon={<Clock className="w-4 h-4" />} title="Subscription Pending Payment">
+                Contact Super Admin to complete your subscription payment (LKR 2,500/month).
+              </Alert>
             );
           if (s.subscriptionStatus === 'ACTIVE' && daysLeft !== null && daysLeft <= 14)
             return (
-              <motion.div {...fadeIn} className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                <p className="text-yellow-800 text-sm font-semibold">⚠️ Subscription Expiring Soon</p>
-                <p className="text-yellow-700 text-xs mt-0.5">
-                  Expires on {new Date(s.subscriptionEnd!).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left). Contact Super Admin to renew.
-                </p>
-              </motion.div>
+              <Alert variant="warning" icon={<CalendarClock className="w-4 h-4" />} title="Subscription Expiring Soon">
+                Expires on {new Date(s.subscriptionEnd!).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left). Contact Super Admin to renew.
+              </Alert>
             );
           return null;
         })()}
@@ -308,7 +293,9 @@ export default function OwnerDashboard() {
         {features.length === 0 && (
           <Card className="mb-6">
             <CardContent className="p-8 text-center">
-              <div className="text-4xl mb-3">🔒</div>
+              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Lock className="w-6 h-6 text-muted-foreground" />
+              </div>
               <p className="font-semibold text-gray-700">No features enabled yet</p>
               <p className="text-gray-400 text-sm mt-1">The Super Admin will assign features to your account.</p>
             </CardContent>
@@ -321,24 +308,18 @@ export default function OwnerDashboard() {
             <motion.div key="overview" {...fadeIn} className="space-y-6">
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Upcoming Private', value: stats.upcomingPrivate,  icon: '👑', show: has('PRIVATE_SAFARI'), color: 'bg-amber-50' },
-                    { label: 'Upcoming Shared',  value: stats.upcomingShared,   icon: '🚙', show: has('SHARED_TRIPS'),   color: 'bg-green-50' },
-                    { label: 'Month Revenue',    value: formatCurrency(parseFloat(stats.monthRevenue || '0')), icon: '💰', show: has('REPORTS_ANALYTICS'), color: 'bg-blue-50' },
-                    { label: 'Pending Payments', value: stats.pendingVendorPayments, icon: '⏳', show: has('VENDOR_LISTINGS'), color: 'bg-red-50' },
-                  ].filter((s) => s.show).map((s, i) => (
-                    <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-                      <Card className={s.color}>
-                        <CardContent className="p-4 flex items-center gap-3">
-                          <span className="text-3xl">{s.icon}</span>
-                          <div>
-                            <p className="text-xs text-gray-500">{s.label}</p>
-                            <p className="text-xl font-bold">{s.value}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+                  {has('PRIVATE_SAFARI') && (
+                    <StatCard label="Upcoming Private" value={stats.upcomingPrivate} icon={Globe} iconBg="bg-amber-100" iconColor="text-amber-600" />
+                  )}
+                  {has('SHARED_TRIPS') && (
+                    <StatCard label="Upcoming Shared" value={stats.upcomingShared} icon={Car} iconBg="bg-green-100" iconColor="text-green-600" />
+                  )}
+                  {has('REPORTS_ANALYTICS') && (
+                    <StatCard label="Month Revenue" value={formatCurrency(parseFloat(stats.monthRevenue || '0'))} icon={TrendingUp} iconBg="bg-blue-100" iconColor="text-blue-600" />
+                  )}
+                  {has('VENDOR_LISTINGS') && (
+                    <StatCard label="Pending Payments" value={stats.pendingVendorPayments} icon={Clock} iconBg="bg-red-100" iconColor="text-red-600" />
+                  )}
                 </div>
               )}
 
@@ -348,7 +329,9 @@ export default function OwnerDashboard() {
                     <motion.button initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
                       onClick={() => setTab('private')}
                       className="bg-amber-50 hover:bg-amber-100 border-2 border-amber-100 rounded-2xl p-5 text-left transition-all hover:shadow-md">
-                      <div className="text-3xl mb-2">👑</div>
+                      <div className="w-10 h-10 bg-amber-200 rounded-xl flex items-center justify-center mb-3">
+                        <Globe className="w-5 h-5 text-amber-700" />
+                      </div>
                       <p className="font-semibold text-gray-800">Private Safaris</p>
                       <p className="text-xs text-gray-500 mt-0.5">Manual bookings you control</p>
                     </motion.button>
@@ -357,7 +340,9 @@ export default function OwnerDashboard() {
                     <motion.button initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.16 }}
                       onClick={() => setTab('shared')}
                       className="bg-green-50 hover:bg-green-100 border-2 border-green-100 rounded-2xl p-5 text-left transition-all hover:shadow-md">
-                      <div className="text-3xl mb-2">🚙</div>
+                      <div className="w-10 h-10 bg-green-200 rounded-xl flex items-center justify-center mb-3">
+                        <Car className="w-5 h-5 text-green-700" />
+                      </div>
                       <p className="font-semibold text-gray-800">Shared Safaris</p>
                       <p className="text-xs text-gray-500 mt-0.5">Group bookings via link</p>
                     </motion.button>
@@ -366,7 +351,9 @@ export default function OwnerDashboard() {
                     <motion.button initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.22 }}
                       onClick={() => setTab('vendors')}
                       className="bg-blue-50 hover:bg-blue-100 border-2 border-blue-100 rounded-2xl p-5 text-left transition-all hover:shadow-md">
-                      <div className="text-3xl mb-2">💳</div>
+                      <div className="w-10 h-10 bg-blue-200 rounded-xl flex items-center justify-center mb-3">
+                        <Wallet className="w-5 h-5 text-blue-700" />
+                      </div>
                       <p className="font-semibold text-gray-800">Vendor Payments</p>
                       <p className="text-xs text-gray-500 mt-0.5">Pay your vendors</p>
                     </motion.button>
@@ -508,21 +495,21 @@ export default function OwnerDashboard() {
                             <label className="text-sm font-medium text-gray-700 mb-1.5 block">Safari Type <span className="text-red-500">*</span></label>
                             <div className="grid grid-cols-3 gap-2">
                               {[
-                                { value: 'Full Day', label: 'Full Day', icon: '🌅' },
-                                { value: 'Half Day Morning', label: 'Half Day Morning', icon: '🌄' },
-                                { value: 'Half Day Afternoon', label: 'Half Day Afternoon', icon: '🌇' },
+                                { value: 'Full Day', label: 'Full Day', icon: Sun },
+                                { value: 'Half Day Morning', label: 'Morning', icon: Sunrise },
+                                { value: 'Half Day Afternoon', label: 'Afternoon', icon: Sunset },
                               ].map((t) => (
                                 <button
                                   key={t.value}
                                   type="button"
                                   onClick={() => setNewPrivateForm((p) => ({ ...p, safariType: t.value }))}
-                                  className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-xs font-medium transition-all ${
+                                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-medium transition-all ${
                                     newPrivateForm.safariType === t.value
                                       ? 'border-amber-500 bg-amber-50 text-amber-800'
                                       : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-amber-300 hover:bg-amber-50/50'
                                   }`}
                                 >
-                                  <span className="text-xl">{t.icon}</span>
+                                  <t.icon className={`w-5 h-5 ${newPrivateForm.safariType === t.value ? 'text-amber-600' : 'text-gray-400'}`} />
                                   <span className="text-center leading-tight">{t.label}</span>
                                 </button>
                               ))}
@@ -553,7 +540,7 @@ export default function OwnerDashboard() {
                               animate={{ opacity: 1, height: 'auto' }}
                               className="mt-2.5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
                             >
-                              <span className="text-xl">💰</span>
+                              <DollarSign className="w-5 h-5 text-amber-600" />
                               <div>
                                 <p className="text-xs text-amber-600 font-medium">30% Deposit Required</p>
                                 <p className="text-base font-bold text-amber-800">{formatCurrency(parseFloat(newPrivateForm.totalAmount) * 0.3)}</p>
@@ -612,8 +599,8 @@ export default function OwnerDashboard() {
                 <motion.div {...fadeIn}>
                   <Card>
                     <CardContent className="py-16 text-center">
-                      <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
-                        👑
+                      <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Globe className="w-8 h-8 text-amber-400" />
                       </div>
                       <p className="font-semibold text-gray-800 text-base">No Private Safaris Yet</p>
                       <p className="text-gray-400 text-sm mt-1.5 max-w-xs mx-auto">
@@ -645,13 +632,13 @@ export default function OwnerDashboard() {
                         {/* Card header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
-                              {safari.safariType === 'Full Day' ? '🌅' : safari.safariType === 'Half Day Morning' ? '🌄' : '🌇'}
+                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              {safari.safariType === 'Full Day' ? <Sun className="w-5 h-5 text-amber-600" /> : safari.safariType === 'Half Day Morning' ? <Sunrise className="w-5 h-5 text-amber-600" /> : <Sunset className="w-5 h-5 text-amber-600" />}
                             </div>
                             <div>
                               <p className="font-bold text-gray-900">{safari.safariType}</p>
                               <p className="text-sm text-gray-500">{formatShortDate(safari.safariDate)}</p>
-                              {safari.location && <p className="text-xs text-gray-400 mt-0.5">📍 {safari.location.name}</p>}
+                              {safari.location && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" />{safari.location.name}</p>}
                             </div>
                           </div>
                           <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusClass}`}>
@@ -664,25 +651,25 @@ export default function OwnerDashboard() {
                           <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-1.5">
                             {displayName && (
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400 w-4 text-center">👤</span>
+                                <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span className="font-medium text-gray-800">{displayName}</span>
                               </div>
                             )}
                             {displayPhone && (
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400 w-4 text-center">📞</span>
+                                <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span className="text-gray-600">{displayPhone}</span>
                               </div>
                             )}
                             {displayEmail && (
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400 w-4 text-center">✉️</span>
+                                <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span className="text-gray-600">{displayEmail}</span>
                               </div>
                             )}
                             {safari.specialRequests && (
                               <div className="flex items-start gap-2 text-sm pt-1 border-t border-gray-200 mt-1">
-                                <span className="text-gray-400 w-4 text-center mt-0.5">📝</span>
+                                <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
                                 <span className="text-gray-500 italic text-xs">{safari.specialRequests}</span>
                               </div>
                             )}
@@ -705,7 +692,7 @@ export default function OwnerDashboard() {
                               {formatCurrency(parseFloat(safari.depositAmount))}
                             </p>
                             <p className={`text-xs mt-0.5 ${safari.depositPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
-                              {safari.depositPaid ? '✓ Paid' : 'Pending'}
+                              {safari.depositPaid ? 'Paid' : 'Pending'}
                             </p>
                           </div>
                         </div>
@@ -731,19 +718,19 @@ export default function OwnerDashboard() {
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Assigned Vendors</p>
                             {safari.jeepAssignment && (
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">🚙 Jeep — {safari.jeepAssignment.vendor?.user?.name} ({safari.jeepAssignment.jeepNumber})</span>
+                                <span className="text-gray-600 flex items-center gap-1.5"><Car className="w-3.5 h-3.5" /> Jeep — {safari.jeepAssignment.vendor?.user?.name} ({safari.jeepAssignment.jeepNumber})</span>
                                 <span className="font-medium">{formatCurrency(parseFloat(safari.jeepAssignment.rentalFee))}</span>
                               </div>
                             )}
                             {safari.guideAssignment && (
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">🧭 Guide — {safari.guideAssignment.vendor?.user?.name}</span>
+                                <span className="text-gray-600 flex items-center gap-1.5"><Compass className="w-3.5 h-3.5" /> Guide — {safari.guideAssignment.vendor?.user?.name}</span>
                                 <span className="font-medium">{formatCurrency(parseFloat(safari.guideAssignment.guideFee))}</span>
                               </div>
                             )}
                             {safari.mealOrders?.map((m: any) => (
                               <div key={m.id} className="flex justify-between text-sm">
-                                <span className="text-gray-600">🍽️ Meals — {m.vendor?.user?.name}</span>
+                                <span className="text-gray-600 flex items-center gap-1.5"><UtensilsCrossed className="w-3.5 h-3.5" /> Meals — {m.vendor?.user?.name}</span>
                                 <span className="font-medium">{formatCurrency(parseFloat(m.totalCost))}</span>
                               </div>
                             ))}
@@ -783,9 +770,9 @@ export default function OwnerDashboard() {
                                 cameraCost: '',
                               });
                             }}
-                            className="w-full mb-2 py-2 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold hover:bg-amber-50 transition-colors"
+                            className="w-full mb-2 py-2 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold hover:bg-amber-50 transition-colors flex items-center justify-center gap-2"
                           >
-                            🏷️ {safari.jeepAssignment || safari.guideAssignment ? 'Edit Vendor Assignments' : 'Assign Vendors'}
+                            <Tag className="w-3.5 h-3.5" /> {safari.jeepAssignment || safari.guideAssignment ? 'Edit Vendor Assignments' : 'Assign Vendors'}
                           </button>
                         )}
 
@@ -796,10 +783,10 @@ export default function OwnerDashboard() {
                             disabled={statusMutation.isPending}
                             className="w-full text-sm font-semibold py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all hover:shadow-md disabled:opacity-50"
                           >
-                            {next === 'DEPOSIT_PENDING' ? '📩 Request Deposit' :
-                             next === 'DEPOSIT_PAID'    ? '✅ Mark Deposit Paid' :
-                             next === 'CONFIRMED'       ? '🎉 Confirm Safari' :
-                             '🏁 Mark Completed'}
+                            {next === 'DEPOSIT_PENDING' ? 'Request Deposit' :
+                             next === 'DEPOSIT_PAID'    ? 'Mark Deposit Received' :
+                             next === 'CONFIRMED'       ? 'Confirm Safari' :
+                             'Mark Completed'}
                           </button>
                         )}
                       </CardContent>
@@ -832,11 +819,11 @@ export default function OwnerDashboard() {
                 {/* Vendor type tabs */}
                 <div className="flex border-b overflow-x-auto">
                   {[
-                    { key: 'JEEP_PROVIDER',  label: '🚙 Jeep' },
-                    { key: 'GUIDE',          label: '🧭 Guide' },
-                    { key: 'RESTAURANT',     label: '🍽️ Meals' },
-                    { key: 'ACCOMMODATION',  label: '🏨 Stay' },
-                    { key: 'CAMERA_RENTAL',  label: '📷 Camera' },
+                    { key: 'JEEP_PROVIDER',  label: 'Jeep' },
+                    { key: 'GUIDE',          label: 'Guide' },
+                    { key: 'RESTAURANT',     label: 'Meals' },
+                    { key: 'ACCOMMODATION',  label: 'Stay' },
+                    { key: 'CAMERA_RENTAL',  label: 'Camera' },
                   ].map((t) => (
                     <button
                       key={t.key}
@@ -866,7 +853,7 @@ export default function OwnerDashboard() {
                           <option value="">Select vendor...</option>
                           {typeVendors.map((v: any) => (
                             <option key={v.id} value={v.id}>
-                              {v.user?.name} {v.averageRating ? `· ★${v.averageRating}` : ''}
+                              {v.user?.name} {v.averageRating ? `· ${v.averageRating} rating` : ''}
                             </option>
                           ))}
                         </select>
@@ -1142,7 +1129,7 @@ export default function OwnerDashboard() {
                         }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
                       >
-                        {copySuccess ? '✓ Copied!' : 'Copy Link'}
+                        {copySuccess ? 'Copied!' : 'Copy'}
                       </button>
                     </div>
                   ) : (
@@ -1214,8 +1201,8 @@ export default function OwnerDashboard() {
                   </div>
 
                   {scheduleMsg && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                      ✓ {scheduleMsg}
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" /> {scheduleMsg}
                     </div>
                   )}
 
@@ -1236,6 +1223,6 @@ export default function OwnerDashboard() {
 
         </AnimatePresence>
       </div>
-    </main>
+    </DashboardShell>
   );
 }

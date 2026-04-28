@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { MapPin, CheckCircle2, XCircle, Map } from 'lucide-react';
 
 const BASE = { lat: 6.9271, lng: 79.8612 };
 const MAX_KM = 7;
@@ -112,8 +113,8 @@ export function PickupSelector({ onSelect, initialTime = '5:45 AM' }: PickupSele
     const marker = L.marker([lat, lng], { icon })
       .bindPopup(
         valid
-          ? `<b>✅ Valid</b><br>${dist.toFixed(2)} km from base`
-          : `<b>❌ Too far</b><br>${dist.toFixed(2)} km — max ${MAX_KM} km`,
+          ? `<b>Valid pickup</b><br>${dist.toFixed(2)} km from base`
+          : `<b>Too far</b><br>${dist.toFixed(2)} km — max ${MAX_KM} km`,
       )
       .addTo(map)
       .openPopup();
@@ -283,7 +284,7 @@ export function PickupSelector({ onSelect, initialTime = '5:45 AM' }: PickupSele
         {mapError ? (
           <div className="h-72 flex items-center justify-center text-sm text-gray-500 text-center px-6">
             <div>
-              <div className="text-3xl mb-2">🗺️</div>
+              <Map className="w-8 h-8 text-gray-400 mx-auto mb-2" />
               <p>{mapError}</p>
             </div>
           </div>
@@ -299,7 +300,10 @@ export function PickupSelector({ onSelect, initialTime = '5:45 AM' }: PickupSele
             ? 'bg-green-50 border-green-200 text-green-800'
             : 'bg-red-50 border-red-200 text-red-700'
         }`}>
-          <span className="text-xl flex-shrink-0 mt-0.5">{isValid ? '✅' : '❌'}</span>
+          {isValid
+            ? <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-green-600" />
+            : <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
+          }
           <div>
             {isValid ? (
               <>
@@ -320,7 +324,7 @@ export function PickupSelector({ onSelect, initialTime = '5:45 AM' }: PickupSele
         </div>
       ) : (
         <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400">
-          <span>📍</span>
+          <MapPin className="w-4 h-4" />
           <span>Search above or tap on the map to set your pickup point</span>
         </div>
       )}

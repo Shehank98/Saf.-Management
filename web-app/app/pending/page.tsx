@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { CheckCircle2, Clock, Check } from 'lucide-react';
 
 export default function PendingPage() {
   const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
@@ -22,7 +23,9 @@ export default function PendingPage() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-lg text-center"
       >
-        <div className="text-6xl mb-5">🎉</div>
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+            <CheckCircle2 className="w-9 h-9 text-green-600" />
+          </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Registration Successful!
         </h1>
@@ -37,7 +40,7 @@ export default function PendingPage() {
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6 text-left">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">⏳</span>
+            <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-amber-800 mb-1">Pending Admin Approval</p>
               <p className="text-amber-700 text-sm">
@@ -52,7 +55,7 @@ export default function PendingPage() {
         <div className="space-y-3 text-sm text-gray-600 mb-6 text-left">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">✓</span>
+              <Check className="w-3 h-3 text-white" strokeWidth={3} />
             </span>
             <span>Account created successfully</span>
           </div>

@@ -10,16 +10,35 @@ import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BillingTab } from '@/components/admin/BillingTab';
+import { DashboardShell } from '@/components/layout/DashboardShell';
+import { NavItem } from '@/components/layout/Sidebar';
+import { StatCard } from '@/components/ui/stat-card';
+import {
+  LayoutDashboard, Users, Zap, CreditCard, Store, MapPin, CalendarDays, BarChart2,
+  LogOut, Car, Globe, ClipboardList, Wrench, TrendingUp, ChevronDown, ChevronUp,
+  CheckCircle, XCircle, MousePointerClick,
+} from 'lucide-react';
 
-const TABS = ['Overview', 'Users', 'Features', 'Billing', 'Vendors', 'Locations', 'Bookings', 'Analytics'];
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { key: 'Overview',   label: 'Overview',   icon: LayoutDashboard },
+  { key: 'Users',      label: 'Users',      icon: Users },
+  { key: 'Features',   label: 'Features',   icon: Zap },
+  { key: 'Billing',    label: 'Billing',    icon: CreditCard },
+  { key: 'Vendors',    label: 'Vendors',    icon: Store },
+  { key: 'Locations',  label: 'Locations',  icon: MapPin },
+  { key: 'Bookings',   label: 'Bookings',   icon: CalendarDays },
+  { key: 'Analytics',  label: 'Analytics',  icon: BarChart2 },
+  { key: 'logout',     label: 'Sign Out',   icon: LogOut, danger: true },
+];
+
 const PIE_COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 const ALL_FEATURES = [
-  { key: 'SHARED_TRIPS',        label: 'Shared Trips',        icon: '🚙', roles: ['SAFARI_OWNER'] },
-  { key: 'PRIVATE_SAFARI',      label: 'Private Safari',      icon: '👑', roles: ['SAFARI_OWNER'] },
-  { key: 'BOOKING_MANAGEMENT',  label: 'Booking Management',  icon: '📋', roles: ['SAFARI_OWNER', 'VENDOR'] },
-  { key: 'VENDOR_LISTINGS',     label: 'Vendor Listings',     icon: '🔧', roles: ['SAFARI_OWNER'] },
-  { key: 'REPORTS_ANALYTICS',   label: 'Reports & Analytics', icon: '📊', roles: ['SAFARI_OWNER', 'VENDOR'] },
+  { key: 'SHARED_TRIPS',        label: 'Shared Trips',        icon: Car,             roles: ['SAFARI_OWNER'] },
+  { key: 'PRIVATE_SAFARI',      label: 'Private Safari',      icon: Globe,           roles: ['SAFARI_OWNER'] },
+  { key: 'BOOKING_MANAGEMENT',  label: 'Booking Management',  icon: ClipboardList,   roles: ['SAFARI_OWNER', 'VENDOR'] },
+  { key: 'VENDOR_LISTINGS',     label: 'Vendor Listings',     icon: Wrench,          roles: ['SAFARI_OWNER'] },
+  { key: 'REPORTS_ANALYTICS',   label: 'Reports & Analytics', icon: TrendingUp,      roles: ['SAFARI_OWNER', 'VENDOR'] },
 ];
 
 export default function AdminDashboard() {
@@ -190,68 +209,32 @@ export default function AdminDashboard() {
     return `text-xs px-2 py-0.5 rounded-full font-medium ${map[status] || 'bg-gray-100 text-gray-700'}`;
   };
 
+  const handleAdminTabChange = (key: string) => {
+    if (key === 'logout') { localStorage.clear(); window.location.href = '/login'; return; }
+    setActiveTab(key);
+  };
+
   if (!authed) return null;
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Super Admin Dashboard</h1>
-          <p className="text-sm text-gray-500">Safari Management System</p>
-        </div>
-        <div className="flex items-center gap-4">
-          {stats?.pendingApprovals > 0 && (
-            <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-              {stats.pendingApprovals} pending
-            </span>
-          )}
-          <button
-            onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
-            className="text-sm text-red-600 hover:text-red-700"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white border-b px-6">
-        <div className="flex gap-0 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab}
-              {tab === 'Users' && stats?.pendingApprovals > 0 && (
-                <span className="ml-1.5 bg-red-500 text-white text-xs rounded-full px-1.5">{stats.pendingApprovals}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-6 max-w-6xl mx-auto">
+    <DashboardShell
+      title="Super Admin Dashboard"
+      navItems={ADMIN_NAV_ITEMS}
+      activeTab={activeTab}
+      onTabChange={handleAdminTabChange}
+      userName="Super Admin"
+      userRole="SUPER_ADMIN"
+      onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
+    >
+      <div className="max-w-5xl mx-auto">
         {/* ── OVERVIEW ── */}
         {activeTab === 'Overview' && stats && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Active Owners',   value: stats.owners.active,    total: stats.owners.total,   color: 'text-green-700',  bg: 'bg-green-50' },
-                { label: 'Active Vendors',  value: stats.vendors.active,   total: stats.vendors.total,  color: 'text-blue-700',   bg: 'bg-blue-50' },
-                { label: 'Pending Approvals', value: stats.pendingApprovals, total: 'awaiting review', color: 'text-amber-700',  bg: 'bg-amber-50' },
-                { label: 'Monthly Revenue', value: formatCurrency(parseFloat(String(stats.revenue.thisMonth))), total: `${formatCurrency(parseFloat(String(stats.revenue.pending)))} pending`, color: 'text-purple-700', bg: 'bg-purple-50' },
-              ].map((s) => (
-                <Card key={s.label} className={s.bg}>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-gray-400 mt-1">/ {s.total}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              <StatCard label="Active Owners" value={`${stats.owners.active} / ${stats.owners.total}`} icon={Globe} iconBg="bg-green-100" iconColor="text-green-600" />
+              <StatCard label="Active Vendors" value={`${stats.vendors.active} / ${stats.vendors.total}`} icon={Store} iconBg="bg-blue-100" iconColor="text-blue-600" />
+              <StatCard label="Pending Approvals" value={stats.pendingApprovals} icon={Users} iconBg="bg-amber-100" iconColor="text-amber-600" highlight={stats.pendingApprovals > 0} />
+              <StatCard label="Monthly Revenue" value={formatCurrency(parseFloat(String(stats.revenue.thisMonth)))} icon={TrendingUp} iconBg="bg-purple-100" iconColor="text-purple-600" sub={`${formatCurrency(parseFloat(String(stats.revenue.pending)))} pending`} />
             </div>
             {sharedPieData.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,7 +385,7 @@ export default function AdminDashboard() {
                                   onClick={() => setEditEmailUserId(null)}
                                   className="text-xs text-gray-400 hover:text-gray-600 px-1"
                                 >
-                                  ✕
+                                  ×
                                 </button>
                               </div>
                             ) : (
@@ -411,7 +394,7 @@ export default function AdminDashboard() {
                                 className="text-xs text-gray-400 hover:text-blue-600 hover:underline mt-0.5 text-left"
                                 title="Click to change email"
                               >
-                                {u.email} ✎
+                                {u.email}
                               </button>
                             )}
                           </td>
@@ -475,7 +458,7 @@ export default function AdminDashboard() {
               <CardContent>
                 {!selectedUser ? (
                   <div className="text-center py-8 text-gray-400">
-                    <div className="text-3xl mb-2">👈</div>
+                    <MousePointerClick className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm">Select an approved user from the left</p>
                   </div>
                 ) : (
@@ -488,7 +471,9 @@ export default function AdminDashboard() {
                           isEnabled ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-gray-50'
                         }`}>
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl">{feat.icon}</span>
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                              <feat.icon className={`w-4.5 h-4.5 ${isEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                            </div>
                             <div>
                               <p className="font-medium text-sm text-gray-900">{feat.label}</p>
                               <p className="text-xs text-gray-400">For {feat.roles.join(', ').replace(/_/g, ' ')}</p>
@@ -577,7 +562,7 @@ export default function AdminDashboard() {
                           loc.isActive ? 'border-green-100 bg-green-50' : 'border-gray-100 bg-gray-50 opacity-60'
                         }`}
                       >
-                        <div className="text-xl">📍</div>
+                        <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
                         <div className="flex-1 min-w-0">
                           {editLocId === loc.id ? (
                             <div className="flex items-center gap-2">
@@ -661,7 +646,7 @@ export default function AdminDashboard() {
                                 key={l.location.id}
                                 className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full"
                               >
-                                📍 {l.location.name}
+                                <MapPin className="w-3 h-3" /> {l.location.name}
                                 <button
                                   onClick={() => ownerLocationMutation.mutate({
                                     userId: owner.user.id,
@@ -733,7 +718,7 @@ export default function AdminDashboard() {
                             'bg-orange-100 text-orange-700'
                           }`}>{v.subscriptionStatus}</span>
                           <span className={statusBadge(v.user.approvalStatus)}>{v.user.approvalStatus}</span>
-                          <span className="text-gray-400 text-xs ml-1">{isExpanded ? '▲' : '▼'}</span>
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                         </div>
                       </button>
 
@@ -746,7 +731,7 @@ export default function AdminDashboard() {
                             )}
                             {(v.locations ?? []).map((l: any) => (
                               <span key={l.location.id} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                                📍 {l.location.name}
+                                <MapPin className="w-3 h-3" /> {l.location.name}
                                 <button
                                   onClick={() => vendorLocationMutation.mutate({
                                     userId: v.user.id,
@@ -863,6 +848,6 @@ export default function AdminDashboard() {
           </Card>
         )}
       </div>
-    </main>
+    </DashboardShell>
   );
 }

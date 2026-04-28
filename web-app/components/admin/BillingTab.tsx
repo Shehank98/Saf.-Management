@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 interface Owner {
   id: string;
@@ -191,8 +192,8 @@ export function BillingTab() {
                       <td className="py-2 text-right text-sm font-semibold text-green-700">{formatCurrency(parseFloat(c.commissionAmount))}</td>
                       <td className="py-2 text-center">
                         {c.status === 'COLLECTED' ? (
-                          <span className="text-xs text-green-600 font-medium">
-                            ✓ {c.collectedAt ? new Date(c.collectedAt).toLocaleDateString() : 'Collected'}
+                          <span className="text-xs text-green-600 font-medium flex items-center justify-center gap-0.5">
+                            <Check className="w-3 h-3" />{c.collectedAt ? new Date(c.collectedAt).toLocaleDateString() : 'Collected'}
                           </span>
                         ) : (
                           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pending</span>

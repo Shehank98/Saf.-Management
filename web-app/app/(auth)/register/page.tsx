@@ -7,7 +7,8 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Leaf, Check, MapPin } from 'lucide-react';
+import { Eye, EyeOff, Leaf, Check, MapPin, Car, Compass, UtensilsCrossed, BedDouble, Camera, Package, Building2, Wrench, AlertCircle } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 
 const schema = z.object({
@@ -29,13 +30,13 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const VENDOR_TYPES = [
-  { value: 'JEEP_PROVIDER',  label: 'Jeep Provider',   icon: '🚙' },
-  { value: 'GUIDE',          label: 'Safari Guide',     icon: '🧭' },
-  { value: 'RESTAURANT',     label: 'Restaurant',       icon: '🍽️' },
-  { value: 'ACCOMMODATION',  label: 'Accommodation',    icon: '🏨' },
-  { value: 'CAMERA_RENTAL',  label: 'Camera Rental',    icon: '📷' },
-  { value: 'OTHER',          label: 'Other',            icon: '📦' },
+const VENDOR_TYPES: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: 'JEEP_PROVIDER',  label: 'Jeep Provider',   icon: Car },
+  { value: 'GUIDE',          label: 'Safari Guide',     icon: Compass },
+  { value: 'RESTAURANT',     label: 'Restaurant',       icon: UtensilsCrossed },
+  { value: 'ACCOMMODATION',  label: 'Accommodation',    icon: BedDouble },
+  { value: 'CAMERA_RENTAL',  label: 'Camera Rental',    icon: Camera },
+  { value: 'OTHER',          label: 'Other',            icon: Package },
 ];
 
 const STEP_LABELS = ['Account Type', 'Personal Info', 'Business', 'Locations'];
@@ -210,14 +211,14 @@ export default function RegisterPage() {
                       {[
                         {
                           value: 'SAFARI_OWNER',
-                          icon: '🏕️',
+                          icon: Building2,
                           label: 'Safari Owner',
                           desc: 'I run safari tours and want to manage bookings, vendors, and trips.',
                           fee: 'LKR 2,500 / month',
                         },
                         {
                           value: 'VENDOR',
-                          icon: '🔧',
+                          icon: Wrench,
                           label: 'Service Provider',
                           desc: 'I provide jeeps, guiding, food, accommodation, or camera rentals.',
                           fee: null,
@@ -228,13 +229,13 @@ export default function RegisterPage() {
                           <div className={`p-5 border-2 rounded-2xl transition-all ${
                             role === opt.value
                               ? 'border-green-500 bg-green-50'
-                              : 'border-gray-150 bg-gray-50 hover:border-gray-300'
+                              : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                           }`}>
                             <div className="flex items-start gap-4">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 ${
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
                                 role === opt.value ? 'bg-green-100' : 'bg-white border border-gray-200'
                               }`}>
-                                {opt.icon}
+                                <opt.icon className={`w-6 h-6 ${role === opt.value ? 'text-green-600' : 'text-gray-400'}`} />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-0.5">
@@ -338,9 +339,11 @@ export default function RegisterPage() {
                                   <div className={`p-3 border-2 rounded-xl text-center transition-all ${
                                     watch('vendorType') === t.value
                                       ? 'border-green-500 bg-green-50'
-                                      : 'border-gray-150 bg-gray-50 hover:border-gray-300'
+                                      : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                                   }`}>
-                                    <div className="text-xl mb-1">{t.icon}</div>
+                                    <div className="flex justify-center mb-1.5">
+                                      <t.icon className={`w-5 h-5 ${watch('vendorType') === t.value ? 'text-green-600' : 'text-gray-400'}`} />
+                                    </div>
                                     <p className="text-xs font-medium text-gray-700 leading-tight">{t.label}</p>
                                   </div>
                                 </label>
@@ -506,7 +509,7 @@ export default function RegisterPage() {
             {/* Error banner */}
             {error && (
               <div className="flex items-start gap-3 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl px-4 py-3 mt-5">
-                <span className="mt-0.5 shrink-0">⚠️</span>
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}

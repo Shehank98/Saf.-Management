@@ -1,10 +1,13 @@
 import Link from 'next/link';
+import { Leaf } from 'lucide-react';
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 flex items-center justify-center px-4">
       <div className="text-center text-white max-w-lg">
-        <div className="text-7xl mb-6">🌿</div>
+        <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+          <Leaf className="w-10 h-10 text-green-300" />
+        </div>
         <h1 className="text-5xl font-bold mb-3">Safari Adventures</h1>
         <p className="text-xl text-green-200 mb-12">Sri Lanka&apos;s premier safari management platform</p>
 

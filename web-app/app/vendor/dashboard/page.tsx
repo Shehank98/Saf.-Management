@@ -1,9 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert } from '@/components/ui/alert';
+import { StatCard } from '@/components/ui/stat-card';
+import { DashboardShell } from '@/components/layout/DashboardShell';
+import { NavItem } from '@/components/layout/Sidebar';
+import {
+  LayoutDashboard, Briefcase, TrendingUp, LogOut,
+  Car, Compass, Calendar, Users, Lock, ClipboardList, BarChart2,
+  CheckCircle, XCircle, Clock, AlertCircle,
+} from 'lucide-react';
 
 interface UserFeature { feature: string; enabled: boolean; }
 interface MeData {
@@ -30,7 +39,12 @@ interface Assignment {
   } | null;
 }
 
-const TABS = ['Overview', 'Jobs', 'Earnings'];
+const VENDOR_NAV_ITEMS: NavItem[] = [
+  { key: 'Overview',  label: 'Overview',  icon: LayoutDashboard },
+  { key: 'Jobs',      label: 'Jobs',      icon: Briefcase },
+  { key: 'Earnings',  label: 'Earnings',  icon: TrendingUp },
+  { key: 'logout',    label: 'Sign Out',  icon: LogOut, danger: true },
+];
 
 const JOB_STATUS_BADGE: Record<string, string> = {
   PENDING:  'bg-amber-100 text-amber-700',
@@ -69,11 +83,15 @@ function JobCard({ job, kind, onRespond }: {
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${JOB_STATUS_BADGE[job.jobStatus] || 'bg-gray-100 text-gray-600'}`}>
               {job.jobStatus}
             </span>
-            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-              {kind === 'jeep' ? '🚙 Jeep' : '🧭 Guide'}
+            <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+              {kind === 'jeep' ? <><Car className="w-3 h-3" /> Jeep</> : <><Compass className="w-3 h-3" /> Guide</>}
             </span>
           </div>
-          <p className="text-sm text-gray-600">📅 {safariDate(job)} · 👥 {guestCount(job)} guests · {fee(job)}</p>
+          <p className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-gray-400" />{safariDate(job)}</span>
+            <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-gray-400" />{guestCount(job)} guests</span>
+            <span>{fee(job)}</span>
+          </p>
           {job.privateSafari?.customerName && (
             <p className="text-xs text-gray-400 mt-1">Customer: {job.privateSafari.customerName}</p>
           )}
@@ -152,58 +170,27 @@ export default function VendorDashboard() {
 
   const enabledFeatures = me?.features?.filter((f) => f.enabled).map((f) => f.feature) || [];
 
+  const handleVendorTabChange = (key: string) => {
+    if (key === 'logout') { localStorage.clear(); window.location.href = '/login'; return; }
+    setActiveTab(key);
+  };
+
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{me?.vendor?.businessName || 'Vendor Dashboard'}</h1>
-          <p className="text-sm text-gray-500">
-            {me?.vendor?.vendorType?.replace(/_/g, ' ')} · {me?.vendor?.subscriptionStatus}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {pendingJobs.length > 0 && (
-            <button onClick={() => setActiveTab('Jobs')} className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-              {pendingJobs.length} pending
-            </button>
-          )}
-          <button onClick={() => { localStorage.clear(); window.location.href = '/login'; }} className="text-sm text-red-600 hover:text-red-700">
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Subscription warning */}
-      {me?.vendor?.subscriptionStatus !== 'ACTIVE' && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
-          <p className="text-amber-800 text-sm font-medium">
-            ⚠️ Subscription {me?.vendor?.subscriptionStatus?.toLowerCase()}. Contact Super Admin to activate.
-          </p>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="bg-white border-b px-6">
-        <div className="flex gap-0">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-3.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab}
-              {tab === 'Jobs' && pendingJobs.length > 0 && (
-                <span className="ml-1.5 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingJobs.length}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <DashboardShell
+      title={me?.vendor?.businessName || 'Vendor Dashboard'}
+      navItems={VENDOR_NAV_ITEMS}
+      activeTab={activeTab}
+      onTabChange={handleVendorTabChange}
+      userName={me?.name}
+      userRole={me?.role}
+      onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
+    >
+      <div className="max-w-3xl mx-auto space-y-6">
+        {me?.vendor?.subscriptionStatus !== 'ACTIVE' && (
+          <Alert variant="warning" icon={<AlertCircle className="w-4 h-4" />} title="Subscription Inactive">
+            Subscription {me?.vendor?.subscriptionStatus?.toLowerCase()}. Contact Super Admin to activate.
+          </Alert>
+        )}
 
         {/* ── OVERVIEW ── */}
         {activeTab === 'Overview' && (
@@ -213,16 +200,19 @@ export default function VendorDashboard() {
                 <h2 className="text-base font-semibold text-gray-700 mb-3">Enabled Features</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {enabledFeatures.map((feature) => {
-                    const info: Record<string, { icon: string; label: string; desc: string }> = {
-                      BOOKING_MANAGEMENT: { icon: '📋', label: 'Booking Management', desc: 'View and manage your assigned bookings' },
-                      REPORTS_ANALYTICS:  { icon: '📊', label: 'Reports & Analytics', desc: 'View earnings and performance data' },
+                    const info: Record<string, { icon: React.ElementType; label: string; desc: string }> = {
+                      BOOKING_MANAGEMENT: { icon: ClipboardList, label: 'Booking Management', desc: 'View and manage your assigned bookings' },
+                      REPORTS_ANALYTICS:  { icon: BarChart2,     label: 'Reports & Analytics', desc: 'View earnings and performance data' },
                     };
                     const item = info[feature];
                     if (!item) return null;
+                    const ItemIcon = item.icon;
                     return (
                       <Card key={feature}>
                         <CardContent className="p-5 flex items-start gap-4">
-                          <span className="text-3xl">{item.icon}</span>
+                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                            <ItemIcon className="w-5 h-5 text-primary" />
+                          </div>
                           <div>
                             <p className="font-semibold text-gray-900">{item.label}</p>
                             <p className="text-sm text-gray-500 mt-0.5">{item.desc}</p>
@@ -236,7 +226,9 @@ export default function VendorDashboard() {
             ) : (
               <Card>
                 <CardContent className="p-10 text-center">
-                  <div className="text-4xl mb-3">🔒</div>
+                  <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <Lock className="w-6 h-6 text-muted-foreground" />
+                  </div>
                   <p className="text-gray-500 font-medium">No features enabled yet</p>
                   <p className="text-gray-400 text-sm mt-1">The Super Admin will assign features to your account.</p>
                 </CardContent>
@@ -255,8 +247,8 @@ export default function VendorDashboard() {
                 {/* Pending */}
                 {pendingJobs.length > 0 && (
                   <div>
-                    <h2 className="text-base font-semibold text-amber-700 mb-3">
-                      ⏳ Pending Response ({pendingJobs.length})
+                    <h2 className="text-base font-semibold text-amber-700 mb-3 flex items-center gap-2">
+                      <Clock className="w-4 h-4" /> Pending Response ({pendingJobs.length})
                     </h2>
                     <div className="space-y-3">
                       {pendingJobs.map(j => (
@@ -269,8 +261,8 @@ export default function VendorDashboard() {
                 {/* Upcoming */}
                 {upcomingJobs.length > 0 && (
                   <div>
-                    <h2 className="text-base font-semibold text-green-700 mb-3">
-                      ✅ Upcoming Jobs ({upcomingJobs.length})
+                    <h2 className="text-base font-semibold text-green-700 mb-3 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Upcoming Jobs ({upcomingJobs.length})
                     </h2>
                     <div className="space-y-3">
                       {upcomingJobs.map(j => (
@@ -283,8 +275,8 @@ export default function VendorDashboard() {
                 {/* Declined */}
                 {declinedJobs.length > 0 && (
                   <div>
-                    <h2 className="text-base font-semibold text-red-600 mb-3">
-                      ❌ Declined ({declinedJobs.length})
+                    <h2 className="text-base font-semibold text-red-600 mb-3 flex items-center gap-2">
+                      <XCircle className="w-4 h-4" /> Declined ({declinedJobs.length})
                     </h2>
                     <div className="space-y-3 opacity-60">
                       {declinedJobs.map(j => (
@@ -297,7 +289,9 @@ export default function VendorDashboard() {
                 {allJobs.length === 0 && (
                   <Card>
                     <CardContent className="p-10 text-center">
-                      <div className="text-4xl mb-3">📋</div>
+                      <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <Briefcase className="w-6 h-6 text-muted-foreground" />
+                      </div>
                       <p className="text-gray-500 font-medium">No jobs yet</p>
                       <p className="text-gray-400 text-sm mt-1">You'll see job assignments here when owners select you.</p>
                     </CardContent>
@@ -349,7 +343,9 @@ export default function VendorDashboard() {
             ) : (
               <Card>
                 <CardContent className="p-10 text-center">
-                  <div className="text-4xl mb-3">📊</div>
+                  <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <BarChart2 className="w-6 h-6 text-muted-foreground" />
+                  </div>
                   <p className="text-gray-500 font-medium">Reports & Analytics not enabled</p>
                   <p className="text-gray-400 text-sm mt-1">Contact Super Admin to enable this feature.</p>
                 </CardContent>
@@ -358,6 +354,6 @@ export default function VendorDashboard() {
           </div>
         )}
       </div>
-    </main>
+    </DashboardShell>
   );
 }

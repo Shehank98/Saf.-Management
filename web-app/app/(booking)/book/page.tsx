@@ -6,18 +6,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { Loader2, Sun, Sunrise, Sunset, Leaf, Clock, Calendar, Check, LucideIcon } from 'lucide-react';
 
 interface AvailableDate {
   date: string;
   safariTypes: { type: string; availableSeats: number; status: string }[];
 }
 
-const TYPE_META: Record<string, { icon: string; time: string; desc: string }> = {
-  'Full Day':           { icon: '🌅', time: '6:00 AM – 6:00 PM',  desc: 'Two game drives, full wildlife experience' },
-  'Half Day Morning':   { icon: '🌄', time: '6:00 AM – 12:00 PM', desc: 'Early morning when animals are most active' },
-  'Half Day Afternoon': { icon: '🌇', time: '12:00 PM – 6:00 PM', desc: 'Golden hour sightings & sunset views' },
-  'Morning Half':       { icon: '🌄', time: '6:00 AM – 12:00 PM', desc: 'Early morning when animals are most active' },
-  'Afternoon Half':     { icon: '🌇', time: '12:00 PM – 6:00 PM', desc: 'Golden hour sightings & sunset views' },
+const TYPE_META: Record<string, { icon: LucideIcon; time: string; desc: string }> = {
+  'Full Day':           { icon: Sun,     time: '6:00 AM – 6:00 PM',  desc: 'Two game drives, full wildlife experience' },
+  'Half Day Morning':   { icon: Sunrise, time: '6:00 AM – 12:00 PM', desc: 'Early morning when animals are most active' },
+  'Half Day Afternoon': { icon: Sunset,  time: '12:00 PM – 6:00 PM', desc: 'Golden hour sightings & sunset views' },
+  'Morning Half':       { icon: Sunrise, time: '6:00 AM – 12:00 PM', desc: 'Early morning when animals are most active' },
+  'Afternoon Half':     { icon: Sunset,  time: '12:00 PM – 6:00 PM', desc: 'Golden hour sightings & sunset views' },
 };
 
 export default function BookingPage() {
@@ -25,7 +26,7 @@ export default function BookingPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center">
         <div className="text-center text-white">
-          <div className="text-6xl mb-4 animate-bounce">🦁</div>
+          <Loader2 className="w-12 h-12 text-emerald-300 animate-spin mx-auto mb-4" />
           <p className="text-emerald-200">Loading your safari...</p>
         </div>
       </div>
@@ -81,7 +82,7 @@ function BookingContent() {
             </div>
             {selectedDate && (
               <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
-                {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ✓
+                {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} <Check className="inline w-3 h-3" />
               </span>
             )}
           </div>
@@ -95,7 +96,7 @@ function BookingContent() {
               </div>
             ) : dates.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                <div className="text-3xl mb-2">📅</div>
+                <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">No available dates yet. Check back soon.</p>
               </div>
             ) : (
@@ -161,14 +162,14 @@ function BookingContent() {
                 </div>
                 {selectedType && (
                   <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
-                    {selectedType} ✓
+                    {selectedType} <Check className="inline w-3 h-3" />
                   </span>
                 )}
               </div>
 
               <div className="px-4 pb-5 space-y-2.5">
                 {selectedDateInfo.safariTypes.map((type) => {
-                  const meta = TYPE_META[type.type] ?? { icon: '🌿', time: '', desc: '' };
+                  const meta = TYPE_META[type.type] ?? { icon: Leaf, time: '', desc: '' };
                   const isSelected = selectedType === type.type;
                   const soldOut = type.availableSeats === 0;
 
@@ -187,16 +188,16 @@ function BookingContent() {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
                           isSelected ? 'bg-green-100' : 'bg-gray-100'
                         }`}>
-                          {meta.icon}
+                          <meta.icon className={`w-5 h-5 ${isSelected ? 'text-green-600' : 'text-gray-500'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="font-semibold text-gray-900 text-sm">{type.type}</p>
-                              {meta.time && <p className="text-xs text-gray-400 mt-0.5">🕐 {meta.time}</p>}
+                              {meta.time && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />{meta.time}</p>}
                             </div>
                             {soldOut ? (
                               <span className="text-xs text-red-500 font-medium flex-shrink-0">Sold out</span>
@@ -256,7 +257,7 @@ function BookingContent() {
 
                 {!jeepsLoading && (!jeepsData || jeepsData.length === 0) && (
                   <div className="text-center py-8 text-gray-400">
-                    <div className="text-3xl mb-2">🪑</div>
+                    <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm">No jeeps available for this slot.</p>
                   </div>
                 )}
@@ -284,7 +285,7 @@ function BookingContent() {
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             jeep.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-50 text-orange-600 border border-orange-200'
                           }`}>
-                            {jeep.status === 'CONFIRMED' ? '✓ Confirmed' : 'Filling up'}
+                            {jeep.status === 'CONFIRMED' ? <span className="flex items-center gap-0.5"><Check className="w-3 h-3" />Confirmed</span> : 'Filling up'}
                           </span>
                           {needed > 0 && (
                             <p className="text-xs text-orange-500 mt-1">Need {needed} more to confirm</p>

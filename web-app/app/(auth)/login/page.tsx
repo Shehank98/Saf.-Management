@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Leaf, BarChart2, Users, MapPin } from 'lucide-react';
+import { Eye, EyeOff, Leaf, BarChart2, Users, MapPin, Clock, AlertCircle } from 'lucide-react';
 import { loginUser } from '@/lib/auth';
 
 const schema = z.object({
@@ -59,7 +59,7 @@ export default function LoginPage() {
           className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-2xl"
         >
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-5">
-            <span className="text-3xl">⏳</span>
+            <Clock className="w-8 h-8 text-amber-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Pending Approval</h2>
           <p className="text-gray-500 leading-relaxed mb-8 text-sm">
@@ -186,7 +186,7 @@ export default function LoginPage() {
 
             {error && (
               <div className="flex items-start gap-3 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl px-4 py-3">
-                <span className="mt-0.5 shrink-0">⚠️</span>
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}

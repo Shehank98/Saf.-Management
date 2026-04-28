@@ -71,7 +71,7 @@ export function SeatMap({ seats, onSelectSeat, selectedSeat }: SeatMapProps) {
                       getSeatClasses(seat, isSelected)
                     )}
                   >
-                    <div className="text-2xl">💺</div>
+                    <div className="text-lg font-bold">{num}</div>
                     <div className="text-xs mt-1">Seat {num}</div>
                   </motion.button>
                 );

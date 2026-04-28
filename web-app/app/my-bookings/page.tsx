@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { Search } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, string> = {
   RESERVED:        'bg-blue-50 text-blue-700 border-blue-200',
@@ -104,7 +105,9 @@ export default function MyBookingsPage() {
         {/* Results */}
         {bookings !== null && bookings.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm border p-8 text-center">
-            <div className="text-4xl mb-3">🔍</div>
+            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Search className="w-7 h-7 text-gray-400" />
+            </div>
             <p className="text-gray-500 text-sm">No bookings found for this number.</p>
             <p className="text-gray-400 text-xs mt-1">Make sure you enter the same number used when booking.</p>
           </div>

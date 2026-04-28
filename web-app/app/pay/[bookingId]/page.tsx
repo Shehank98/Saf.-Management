@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { Loader2, Search, CheckCircle2, Timer, AlertCircle, Lock } from 'lucide-react';
 
 const STRIPE_JS_URL = 'https://js.stripe.com/v3/';
 
@@ -140,7 +141,7 @@ export default function PayPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center">
         <div className="text-white text-center">
-          <div className="text-5xl mb-4 animate-bounce">🌿</div>
+          <Loader2 className="w-12 h-12 text-emerald-300 animate-spin mx-auto mb-4" />
           <p className="text-emerald-200 text-sm">Loading your booking…</p>
         </div>
       </div>
@@ -152,7 +153,9 @@ export default function PayPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-5xl mb-3">🔍</div>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Search className="w-8 h-8 text-gray-400" />
+          </div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Booking Not Found</h2>
           <p className="text-gray-500 text-sm">{loadError}</p>
         </div>
@@ -165,7 +168,9 @@ export default function PayPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 to-emerald-800 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
-          <div className="text-5xl mb-4">✅</div>
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-9 h-9 text-green-600" />
+          </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Already Paid</h2>
           <p className="text-gray-500 text-sm">
             Seat #{booking.seatNumber} on <strong>{booking.jeep.safariType}</strong> is confirmed.
@@ -232,13 +237,13 @@ export default function PayPage() {
         {/* Deadline banner */}
         {deadline && !isExpired && timeLeft && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between text-amber-800 text-sm">
-            <span>⏱ Pay before deadline</span>
+            <span className="flex items-center gap-1.5"><Timer className="w-4 h-4" />Pay before deadline</span>
             <span className="font-bold tabular-nums">{timeLeft}</span>
           </div>
         )}
         {isExpired && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm text-center font-medium">
-            ⚠️ Payment window has closed. Your seat may have been released.
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm flex items-center gap-2 font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0" />Payment window has closed. Your seat may have been released.
           </div>
         )}
 
@@ -308,7 +313,7 @@ export default function PayPage() {
               </div>
             )}
 
-            <p className="text-xs text-gray-400 text-center">🔒 Secured by Stripe</p>
+            <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1"><Lock className="w-3 h-3" />Secured by Stripe</p>
           </div>
         )}
       </div>
