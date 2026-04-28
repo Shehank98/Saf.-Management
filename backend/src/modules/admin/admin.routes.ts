@@ -6,6 +6,7 @@ import { checkPaymentDeadlines } from '../cron/payment-deadline.cron';
 import { checkSafariCancellations } from '../cron/safari-cancellation.cron';
 import { checkSubscriptionExpiry } from '../cron/subscription-expiry.cron';
 import { checkSharedSafariSchedule } from '../cron/shared-safari-schedule.cron';
+import { refundBooking } from '../payments/stripe.service';
 import { successResponse, errorResponse } from '../../types';
 import { prisma } from '../../config/database';
 
@@ -155,6 +156,24 @@ router.get('/owners', wrap(async (_req: any, res: any) => {
   res.json(successResponse(owners));
 }));
 
+// Replace all location assignments for a vendor
+router.put('/vendors/:userId/locations', wrap(async (req: any, res: any) => {
+  const { locationIds } = req.body as { locationIds: string[] };
+  const vendor = await prisma.vendor.findUnique({ where: { userId: req.params.userId } });
+  if (!vendor) { res.status(404).json(errorResponse('Vendor not found')); return; }
+
+  await prisma.$transaction([
+    prisma.vendorLocation.deleteMany({ where: { vendorId: vendor.id } }),
+    ...(locationIds.length
+      ? [prisma.vendorLocation.createMany({
+          data: locationIds.map((locationId) => ({ vendorId: vendor.id, locationId })),
+          skipDuplicates: true,
+        })]
+      : []),
+  ]);
+  res.json(successResponse(null, 'Vendor locations updated'));
+}));
+
 // Replace all location assignments for an owner
 router.put('/owners/:userId/locations', wrap(async (req: any, res: any) => {
   const { locationIds } = req.body as { locationIds: string[] };
@@ -172,6 +191,38 @@ router.put('/owners/:userId/locations', wrap(async (req: any, res: any) => {
   ]);
 
   res.json(successResponse(null, 'Owner locations updated'));
+}));
+
+// ==================== BOOKINGS ====================
+
+router.get('/bookings', wrap(async (req: any, res: any) => {
+  const status = req.query.status as string | undefined;
+  const validStatuses = ['PAYMENT_PENDING', 'PAID', 'REFUNDED', 'RELEASED', 'AUTO_CANCELLED'];
+  const where = status && validStatuses.includes(status)
+    ? { status: status as any }
+    : { status: { in: ['PAYMENT_PENDING', 'PAID', 'REFUNDED'] as any[] } };
+
+  const bookings = await prisma.sharedSafariBooking.findMany({
+    where,
+    include: {
+      customer: { include: { user: { select: { name: true, phone: true } } } },
+      jeep: {
+        select: {
+          safariDate: true, safariType: true,
+          owner: { select: { companyName: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+  });
+
+  res.json(successResponse(bookings));
+}));
+
+router.post('/bookings/:bookingId/refund', wrap(async (req: any, res: any) => {
+  const result = await refundBooking(req.params.bookingId);
+  res.json(successResponse(result, 'Refund processed successfully'));
 }));
 
 export { router as adminRouter };

@@ -107,6 +107,32 @@ export async function getJeepByToken(req: Request, res: Response): Promise<void>
   res.json(successResponse(jeep));
 }
 
+export async function getMyBookings(req: Request, res: Response): Promise<void> {
+  const { phone } = req.query;
+  if (!phone) { res.status(400).json(errorResponse('phone is required')); return; }
+
+  const user = await prisma.user.findUnique({ where: { phone: phone as string } });
+  if (!user) { res.json(successResponse([])); return; }
+
+  const customer = await prisma.customer.findUnique({ where: { userId: user.id } });
+  if (!customer) { res.json(successResponse([])); return; }
+
+  const bookings = await prisma.sharedSafariBooking.findMany({
+    where: { customerId: customer.id },
+    include: {
+      jeep: {
+        select: {
+          safariDate: true, safariType: true, status: true,
+          owner: { select: { companyName: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json(successResponse(bookings));
+}
+
 export async function getPaymentTracking(req: AuthRequest, res: Response): Promise<void> {
   const result = await service.getPaymentTracking(req.params.jeepId);
   if (!result) { res.status(404).json(errorResponse('Safari not found')); return; }

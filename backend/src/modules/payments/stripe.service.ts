@@ -14,6 +14,29 @@ export async function createPaymentIntent(bookingId: string, amount: number, cur
   return { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
 }
 
+export async function refundBooking(bookingId: string): Promise<{ refundId: string }> {
+  const stripe = getStripe();
+
+  const booking = await prisma.sharedSafariBooking.findUnique({
+    where: { id: bookingId },
+    select: { paymentId: true, status: true },
+  });
+
+  if (!booking) throw Object.assign(new Error('Booking not found'), { status: 404 });
+  if (booking.status !== 'PAID') throw Object.assign(new Error('Only PAID bookings can be refunded'), { status: 400 });
+  if (!booking.paymentId) throw Object.assign(new Error('No payment ID on record — was this paid via Stripe?'), { status: 400 });
+
+  const refund = await stripe.refunds.create({ payment_intent: booking.paymentId });
+
+  await prisma.sharedSafariBooking.update({
+    where: { id: bookingId },
+    data: { status: 'REFUNDED' },
+  });
+
+  logger.info(`Refunded booking ${bookingId} — Stripe refund ${refund.id}`);
+  return { refundId: refund.id };
+}
+
 export async function handleWebhook(rawBody: Buffer, signature: string) {
   const stripe = getStripe();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;

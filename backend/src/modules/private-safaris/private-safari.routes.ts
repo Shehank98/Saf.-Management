@@ -32,30 +32,57 @@ router.get('/:id', authenticate, wrap(async (req: any, res: any) => {
 }));
 
 router.patch('/:id/status', authenticate, requireRole('SAFARI_OWNER', 'SUPER_ADMIN'), wrap(async (req: any, res: any) => {
-  const safari = await service.updateStatus(req.params.id, req.body.status);
+  const newStatus: string = req.body.status;
+  const safari = await service.updateStatus(req.params.id, newStatus);
 
-  if (req.body.status === 'COMPLETED') {
+  const NOTIFY_STATUSES = ['DEPOSIT_PENDING', 'CONFIRMED', 'COMPLETED'];
+  if (NOTIFY_STATUSES.includes(newStatus)) {
     const full = await prisma.privateSafari.findUnique({
       where: { id: req.params.id },
       select: {
-        customerPhone: true,
-        customerName: true,
-        safariDate: true,
+        customerPhone: true, customerName: true,
+        safariDate: true, safariType: true,
+        depositAmount: true, numberOfGuests: true,
         booking: { include: { customer: { include: { user: { select: { name: true, phone: true } } } } } },
       },
     });
+
     const phone = full?.customerPhone || full?.booking?.customer?.user?.phone;
     const name  = full?.customerName  || full?.booking?.customer?.user?.name || 'Valued Customer';
+    const dateStr = full?.safariDate
+      ? new Date(full.safariDate).toLocaleDateString('en-US', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        })
+      : '';
+
     if (phone) {
-      sendWhatsApp({
-        to: phone,
-        template: 'review_request',
-        data: {
-          customerName: name,
-          date: full?.safariDate ? new Date(full.safariDate).toLocaleDateString('en-GB') : '',
-          reviewLink: '',
-        },
-      }).catch(() => {});
+      if (newStatus === 'DEPOSIT_PENDING') {
+        sendWhatsApp({
+          to: phone, template: 'private_safari_deposit_request',
+          data: {
+            customerName: name, date: dateStr,
+            safariType: full?.safariType ?? '',
+            numberOfGuests: full?.numberOfGuests ?? 1,
+            depositAmount: full?.depositAmount ? parseFloat(full.depositAmount.toString()).toFixed(0) : '0',
+          },
+        }).catch(() => {});
+      }
+      if (newStatus === 'CONFIRMED') {
+        sendWhatsApp({
+          to: phone, template: 'private_safari_confirmed',
+          data: {
+            customerName: name, date: dateStr,
+            safariType: full?.safariType ?? '',
+            numberOfGuests: full?.numberOfGuests ?? 1,
+          },
+        }).catch(() => {});
+      }
+      if (newStatus === 'COMPLETED') {
+        sendWhatsApp({
+          to: phone, template: 'review_request',
+          data: { customerName: name, date: dateStr, reviewLink: '' },
+        }).catch(() => {});
+      }
     }
   }
 

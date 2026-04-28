@@ -136,6 +136,37 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>) => object> = {
     ],
   }),
 
+  // Private safari: sent to customer when status moves to DEPOSIT_PENDING
+  private_safari_deposit_request: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.customerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.numberOfGuests) },
+          { type: 'text', text: `LKR ${data.depositAmount}` },
+        ],
+      },
+    ],
+  }),
+
+  // Private safari: sent to customer when status moves to CONFIRMED
+  private_safari_confirmed: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.customerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.numberOfGuests) },
+        ],
+      },
+    ],
+  }),
+
   // Sent to the safari owner when the 4th seat is reserved and payment is triggered
   owner_safari_payment_alert: (data) => ({
     components: [

@@ -83,6 +83,7 @@ export default function OwnerDashboard() {
     queryKey: ['owner-jeeps'],
     queryFn: () => api.get('/shared-safari/owner/jeeps').then((r) => r.data.data),
     enabled: tab === 'shared',
+    refetchInterval: tab === 'shared' ? 30_000 : false,
   });
 
   const { data: privateSafaris, isLoading: privateLoading } = useQuery({

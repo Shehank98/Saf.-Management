@@ -12,6 +12,7 @@ router.get('/available-dates', wrap(ctrl.getAvailableDates));
 router.get('/jeeps/:date/:type', wrap(ctrl.getJeepsByDate));
 router.get('/booking/:bookingId', wrap(ctrl.getBooking));
 router.get('/link/:token', wrap(ctrl.getJeepByToken));
+router.get('/my-bookings', wrap(ctrl.getMyBookings));
 
 // Customer
 router.post('/validate-location', wrap(ctrl.validateLocation));

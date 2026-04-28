@@ -11,7 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BillingTab } from '@/components/admin/BillingTab';
 
-const TABS = ['Overview', 'Users', 'Features', 'Billing', 'Vendors', 'Locations', 'Analytics'];
+const TABS = ['Overview', 'Users', 'Features', 'Billing', 'Vendors', 'Locations', 'Bookings', 'Analytics'];
 const PIE_COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 const ALL_FEATURES = [
@@ -32,6 +32,8 @@ export default function AdminDashboard() {
   const [newLocDesc, setNewLocDesc] = useState('');
   const [editLocId, setEditLocId] = useState<string | null>(null);
   const [editLocName, setEditLocName] = useState('');
+  const [expandedVendorId, setExpandedVendorId] = useState<string | null>(null);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('PAYMENT_PENDING');
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -78,6 +80,13 @@ export default function AdminDashboard() {
     retry: false,
   });
 
+  const { data: bookingsData, isLoading: bookingsLoading } = useQuery({
+    queryKey: ['admin-bookings', bookingStatusFilter],
+    queryFn: () => api.get(`/admin/bookings?status=${bookingStatusFilter}`).then((r) => r.data.data),
+    enabled: authed && activeTab === 'Bookings',
+    retry: false,
+  });
+
   const { data: locationsData, isLoading: locLoading } = useQuery({
     queryKey: ['admin-locations'],
     queryFn: () => api.get('/admin/locations').then((r) => r.data.data),
@@ -113,6 +122,17 @@ export default function AdminDashboard() {
     mutationFn: ({ userId, locationIds }: { userId: string; locationIds: string[] }) =>
       api.put(`/admin/owners/${userId}/locations`, { locationIds }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-owners'] }),
+  });
+
+  const vendorLocationMutation = useMutation({
+    mutationFn: ({ userId, locationIds }: { userId: string; locationIds: string[] }) =>
+      api.put(`/admin/vendors/${userId}/locations`, { locationIds }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-vendors'] }),
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: (bookingId: string) => api.post(`/admin/bookings/${bookingId}/refund`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-bookings', bookingStatusFilter] }),
   });
 
   const createLocMutation = useMutation({
@@ -643,38 +663,156 @@ export default function AdminDashboard() {
         {activeTab === 'Vendors' && (
           <Card>
             <CardHeader><CardTitle>All Vendors</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b">
-                    <th className="text-left py-2 text-gray-500 font-medium">Name</th>
-                    <th className="text-left py-2 text-gray-500 font-medium">Type</th>
-                    <th className="text-left py-2 text-gray-500 font-medium">Subscription</th>
-                    <th className="text-left py-2 text-gray-500 font-medium">Approval</th>
-                  </tr></thead>
-                  <tbody>
-                    {vendorsData?.map((v: any) => (
-                      <tr key={v.id} className="border-b hover:bg-gray-50">
-                        <td className="py-3">
-                          <p className="font-medium">{v.businessName}</p>
-                          <p className="text-xs text-gray-400">{v.user.email}</p>
-                        </td>
-                        <td className="py-3 text-gray-500">{v.vendorType?.replace('_', ' ')}</td>
-                        <td className="py-3">
+            <CardContent className="p-0">
+              <div className="divide-y divide-gray-100">
+                {vendorsData?.map((v: any) => {
+                  const isExpanded = expandedVendorId === v.user.id;
+                  const assigned = (v.locations ?? []).map((l: any) => l.location.id) as string[];
+                  return (
+                    <div key={v.id}>
+                      <button
+                        onClick={() => setExpandedVendorId(isExpanded ? null : v.user.id)}
+                        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 text-left transition-colors"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 text-sm">{v.businessName}</p>
+                            <p className="text-xs text-gray-400 truncate">{v.user.email} · {v.vendorType?.replace(/_/g, ' ')}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                             v.subscriptionStatus === 'ACTIVE' ? 'bg-green-100 text-green-700' :
                             v.subscriptionStatus === 'EXPIRED' ? 'bg-red-100 text-red-700' :
                             'bg-orange-100 text-orange-700'
                           }`}>{v.subscriptionStatus}</span>
-                        </td>
-                        <td className="py-3">
                           <span className={statusBadge(v.user.approvalStatus)}>{v.user.approvalStatus}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <span className="text-gray-400 text-xs ml-1">{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-5 pb-4 bg-gray-50 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">Operating Locations</p>
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {assigned.length === 0 && (
+                              <span className="text-xs text-red-500 italic">No locations assigned</span>
+                            )}
+                            {(v.locations ?? []).map((l: any) => (
+                              <span key={l.location.id} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                                📍 {l.location.name}
+                                <button
+                                  onClick={() => vendorLocationMutation.mutate({
+                                    userId: v.user.id,
+                                    locationIds: assigned.filter((id) => id !== l.location.id),
+                                  })}
+                                  className="ml-1 text-blue-600 hover:text-red-600 font-bold leading-none"
+                                  title="Remove"
+                                >×</button>
+                              </span>
+                            ))}
+                          </div>
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (!e.target.value || assigned.includes(e.target.value)) return;
+                              vendorLocationMutation.mutate({ userId: v.user.id, locationIds: [...assigned, e.target.value] });
+                              e.target.value = '';
+                            }}
+                            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="">+ Add a location…</option>
+                            {locationsData?.filter((l: any) => l.isActive && !assigned.includes(l.id)).map((l: any) => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── BOOKINGS ── */}
+        {activeTab === 'Bookings' && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Bookings</CardTitle>
+                <select
+                  value={bookingStatusFilter}
+                  onChange={(e) => setBookingStatusFilter(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="PAYMENT_PENDING">Payment Pending</option>
+                  <option value="PAID">Paid</option>
+                  <option value="REFUNDED">Refunded</option>
+                  <option value="RELEASED">Released</option>
+                </select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {bookingsLoading && <p className="text-sm text-gray-400 text-center py-6">Loading…</p>}
+              {!bookingsLoading && (!bookingsData || bookingsData.length === 0) && (
+                <p className="text-sm text-gray-400 text-center py-6">No bookings found.</p>
+              )}
+              {bookingsData && bookingsData.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b">
+                      <th className="text-left py-2 text-gray-500 font-medium">Customer</th>
+                      <th className="text-left py-2 text-gray-500 font-medium">Safari</th>
+                      <th className="text-left py-2 text-gray-500 font-medium">Seat</th>
+                      <th className="text-left py-2 text-gray-500 font-medium">Amount</th>
+                      <th className="text-left py-2 text-gray-500 font-medium">Status</th>
+                      <th className="text-left py-2 text-gray-500 font-medium">Action</th>
+                    </tr></thead>
+                    <tbody>
+                      {bookingsData.map((b: any) => (
+                        <tr key={b.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3">
+                            <p className="font-medium">{b.customer?.user?.name}</p>
+                            <p className="text-xs text-gray-400">{b.customer?.user?.phone}</p>
+                          </td>
+                          <td className="py-3">
+                            <p className="font-medium">{b.jeep?.safariType}</p>
+                            <p className="text-xs text-gray-400">
+                              {b.jeep?.safariDate ? new Date(b.jeep.safariDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                            </p>
+                          </td>
+                          <td className="py-3 text-gray-700">#{b.seatNumber}</td>
+                          <td className="py-3 font-medium">LKR {parseFloat(b.totalAmount).toLocaleString()}</td>
+                          <td className="py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              b.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                              b.status === 'PAYMENT_PENDING' ? 'bg-amber-100 text-amber-700' :
+                              b.status === 'REFUNDED' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>{b.status}</span>
+                          </td>
+                          <td className="py-3">
+                            {b.status === 'PAID' && (
+                              <button
+                                onClick={() => {
+                                  if (!confirm(`Refund LKR ${parseFloat(b.totalAmount).toLocaleString()} for ${b.customer?.user?.name}?`)) return;
+                                  refundMutation.mutate(b.id);
+                                }}
+                                disabled={refundMutation.isPending}
+                                className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                Refund
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
