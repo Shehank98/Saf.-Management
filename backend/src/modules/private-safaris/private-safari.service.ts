@@ -14,7 +14,7 @@ export async function createInquiry(ownerId: string, data: {
   specialRequests?: string;
 }) {
   const depositPct = data.depositPercentage || 30;
-  const depositAmount = (data.totalAmount * depositPct) / 100;
+  const depositAmount = Math.round((data.totalAmount * depositPct) / 100);
 
   if (data.locationId) {
     const ownerLoc = await prisma.safariOwnerLocation.findFirst({
@@ -62,7 +62,13 @@ export async function updateStatus(id: string, status: string, requestingOwnerId
     if (!safari) throw Object.assign(new Error('Safari not found'), { status: 404 });
     if (safari.ownerId !== requestingOwnerId) throw Object.assign(new Error('Forbidden'), { status: 403 });
   }
-  return prisma.privateSafari.update({ where: { id }, data: { status: status as any } });
+  return prisma.privateSafari.update({
+    where: { id },
+    data: {
+      status: status as any,
+      ...(status === 'DEPOSIT_PAID' ? { depositPaid: true } : {}),
+    },
+  });
 }
 
 export async function assignVendors(id: string, vendors: {
