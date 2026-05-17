@@ -1,0 +1,42 @@
+{
+  "name": "Safari Adventures",
+  "short_name": "Safari",
+  "description": "Manage every safari, every step. Book seats, manage vendors, and track revenue across every park in Sri Lanka.",
+  "start_url": "/pwa/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2D6A4F",
+  "background_color": "#FAFAF7",
+  "categories": ["travel", "business"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Browse Safaris",
+      "short_name": "Browse",
+      "description": "Find and book safari trips",
+      "url": "/pwa/?screen=browse",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "description": "View your upcoming safaris",
+      "url": "/pwa/?screen=bookings",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

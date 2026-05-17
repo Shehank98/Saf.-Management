@@ -193,6 +193,10 @@ export default function BookingSeatPage() {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 
+  const MIN_SEATS = 4;
+  const reservedCount = jeep.bookings.filter((b) => TAKEN_STATUSES.includes(b.status)).length;
+  const occupancyPct = Math.min(100, Math.round((reservedCount / MIN_SEATS) * 100));
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero header */}
@@ -211,6 +215,27 @@ export default function BookingSeatPage() {
               {jeep.status === 'CONFIRMED' ? 'Safari Confirmed' : needed > 0 ? `Need ${needed} more` : 'Pending'}
             </span>
           </div>
+
+          {/* Minimum occupancy tracker */}
+          {jeep.status !== 'CONFIRMED' && (
+            <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-xl p-3">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs font-semibold text-emerald-200">Seats reserved</span>
+                <span className="text-xs font-bold text-white">{reservedCount} / {MIN_SEATS} min.</span>
+              </div>
+              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-300 rounded-full transition-all duration-500"
+                  style={{ width: `${occupancyPct}%` }}
+                />
+              </div>
+              <p className="text-xs text-emerald-300 mt-1.5">
+                {needed > 0
+                  ? `🔒 Reserve free — payment only after ${MIN_SEATS} seats are filled`
+                  : '✅ Minimum reached — your payment will be requested shortly'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
