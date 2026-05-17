@@ -58,3 +58,58 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Safari Adventures Design System */
+:root {
+  --safari-green: #2D6A4F;
+  --safari-green-dark: #1F4F3A;
+  --safari-green-light: #E3EFE9;
+  --safari-brown: #8B5E3C;
+  --safari-sand: #F4E1C1;
+  --safari-sand-soft: #FAEFD9;
+  --safari-bg: #FAFAF7;
+  --safari-surface: #FFFFFF;
+  --safari-text: #1A1A1A;
+  --safari-text-2: #555555;
+  --safari-text-3: #8A8A8A;
+  --safari-border: #E8E5DE;
+  --safari-warning: #D97706;
+  --safari-danger: #C0392B;
+  --safari-info: #2E6BB8;
+  --safari-radius: 14px;
+  --safari-shadow: 0 6px 18px rgba(28, 38, 32, 0.06), 0 1px 2px rgba(20,20,20,0.04);
+}
+
+/* Button utilities */
+.btn-safari {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+  border: none; border-radius: 14px; padding: 12px 20px;
+  transition: background 0.15s, opacity 0.15s; outline: none; white-space: nowrap;
+}
+.btn-safari-primary { background: #2D6A4F; color: #fff; }
+.btn-safari-primary:hover { background: #1F4F3A; }
+.btn-safari-primary:disabled { background: #2D6A4F; opacity: 0.55; }
+.btn-safari-secondary { background: #fff; color: #1A1A1A; border: 1.5px solid #E8E5DE; }
+.btn-safari-secondary:hover { background: #FAFAF7; }
+.btn-safari-ghost { background: transparent; color: #555555; }
+.btn-safari-ghost:hover { background: rgba(0,0,0,0.04); }
+.btn-safari-lg { padding: 15px 24px; font-size: 15px; border-radius: 16px; }
+.btn-safari-block { width: 100%; }
+
+/* Card utility */
+.card-safari {
+  background: #fff; border-radius: 14px;
+  border: 1px solid #E8E5DE;
+  box-shadow: 0 6px 18px rgba(28,38,32,0.06), 0 1px 2px rgba(20,20,20,0.04);
+}
+
+/* Input utility */
+.input-safari {
+  width: 100%; height: 44px; border-radius: 10px;
+  border: 1.5px solid #E8E5DE; background: #FAFAF7;
+  padding: 0 14px; font-size: 14px; color: #1A1A1A;
+  outline: none; transition: border-color 0.15s, background 0.15s;
+}
+.input-safari:focus { border-color: #2D6A4F; background: #fff; }
+.input-safari::placeholder { color: #8A8A8A; }
