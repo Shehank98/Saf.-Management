@@ -74,12 +74,15 @@ function AdminDashboardScreen({ go }) {
 function UserManagementScreen({ go }) {
   const [tab, setTab] = useState('pending');
   const [selected, setSelected] = useState(null);
+  const [actioned, setActioned] = useState({});
   const toast = useToast();
   const users = window.MOCK.ADMIN_USERS.filter(u => u.status === tab);
 
+  const isVendorRole = (role) => role !== 'Safari Owner';
+
   return (
     <div className="app-body" style={{paddingBottom: 110}}>
-      <TopBar title="User Management" subtitle="14 pending review" onBack={() => go('home')} />
+      <TopBar title="User Management" subtitle="3 pending review" onBack={() => go('home')} />
       <div style={{padding:'0 16px'}}>
         <Tabs items={[{id:'pending',label:'Pending (3)'},{id:'approved',label:'Approved'},{id:'rejected',label:'Rejected'}]} active={tab} onChange={setTab} />
 
@@ -89,43 +92,53 @@ function UserManagementScreen({ go }) {
         </div>
 
         <div className="stack" style={{gap:10}}>
-          {users.map(u => (
-            <div key={u.email} className="card card-pad">
-              <div className="row" style={{gap:12}}>
-                <div className="avatar-sm" style={{background: u.role.includes('Owner') ? 'var(--primary)' : 'var(--brown)'}}>
-                  {u.name.split(' ').map(p => p[0]).slice(0,2).join('')}
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13.5,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.name}</div>
-                  <div style={{fontSize:11.5,color:'var(--text-3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email}</div>
-                </div>
-                <div style={{textAlign:'right'}}>
-                  <span className="chip" style={{padding:'3px 8px',fontSize:10.5,background:'var(--bg)',border:'1px solid var(--line)'}}>{u.role}</span>
-                </div>
-              </div>
-              <div className="row between" style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--line-soft)'}}>
-                <span style={{fontSize:11,color:'var(--text-3)'}}>Registered {u.date}</span>
-                {tab === 'pending' ? (
-                  <div className="row" style={{gap:6}}>
-                    <button className="btn btn-secondary" style={{padding:'6px 12px',fontSize:11.5}} onClick={() => setSelected({...u, action:'reject'})}>
-                      Reject
-                    </button>
-                    <button className="btn btn-primary" style={{padding:'6px 12px',fontSize:11.5}} onClick={() => { toast(`${u.name} approved`); }}>
-                      Approve
-                    </button>
+          {users.map(u => {
+            const a = actioned[u.email];
+            const subActive = u.sub || a === 'sub';
+            return (
+              <div key={u.email} className="card card-pad">
+                <div className="row" style={{gap:12}}>
+                  <div className="avatar-sm" style={{background: u.role.includes('Owner') ? 'var(--primary)' : 'var(--brown)'}}>
+                    {u.name.split(' ').map(p => p[0]).slice(0,2).join('')}
                   </div>
-                ) : (
-                  <Badge kind={u.status === 'approved' ? 'active' : 'cancelled'}>{u.status}</Badge>
-                )}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13.5,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.name}</div>
+                    <div style={{fontSize:11.5,color:'var(--text-3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email}</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <span className="chip" style={{padding:'3px 8px',fontSize:10.5,background:'var(--bg)',border:'1px solid var(--line)'}}>{u.role}</span>
+                  </div>
+                </div>
+                <div className="row between" style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--line-soft)',flexWrap:'wrap',gap:8}}>
+                  <span style={{fontSize:11,color:'var(--text-3)'}}>Registered {u.date}</span>
+                  {tab === 'pending' ? (
+                    <div className="row" style={{gap:6}}>
+                      <button className="btn btn-secondary" style={{padding:'6px 12px',fontSize:11.5}} onClick={() => setSelected({...u, action:'reject'})}>
+                        Reject
+                      </button>
+                      <button className="btn btn-primary" style={{padding:'6px 12px',fontSize:11.5}} onClick={() => toast(`${u.name} approved · WhatsApp sent`)}>
+                        Approve
+                      </button>
+                    </div>
+                  ) : tab === 'approved' && isVendorRole(u.role) && !subActive ? (
+                    <button className="btn" style={{background:'var(--brown)',color:'#fff',padding:'6px 12px',fontSize:11.5}} onClick={() => { setActioned(p => ({...p, [u.email]:'sub'})); toast(`Subscription activated for ${u.name}`); }}>
+                      <Icon name="zap" size={11} color="#fff" /> Activate Subscription
+                    </button>
+                  ) : tab === 'approved' && isVendorRole(u.role) && subActive ? (
+                    <Badge kind="active" icon="zap">Sub Active</Badge>
+                  ) : (
+                    <Badge kind={u.status === 'approved' ? 'active' : 'cancelled'}>{u.status}</Badge>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       <Sheet open={!!selected} onClose={() => setSelected(null)} title={`Reject ${selected?.name}?`}>
         <div className="field">
-          <label className="label">Reason (will be emailed to user)</label>
+          <label className="label">Reason (will be sent via WhatsApp)</label>
           <textarea className="textarea" placeholder="Tell them what's needed to be approved later…"></textarea>
         </div>
         <div className="row" style={{gap:8}}>

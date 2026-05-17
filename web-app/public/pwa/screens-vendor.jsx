@@ -1,6 +1,7 @@
 // screens-vendor.jsx - Vendor dashboard, jobs, earnings, subscription
 
 function VendorHomeScreen({ go }) {
+  const [showGate, setShowGate] = useState(false);
   return (
     <div className="app-body" style={{paddingBottom:110}}>
       <TopBar
@@ -23,9 +24,14 @@ function VendorHomeScreen({ go }) {
           <div style={{height:6,background:'rgba(139,94,60,0.18)',borderRadius:3,overflow:'hidden',marginBottom:10}}>
             <div style={{height:'100%',width:'13%',background:'var(--brown)'}} />
           </div>
-          <button className="btn" style={{background:'var(--brown)',color:'#fff',width:'100%',padding:'8px',fontSize:12.5}} onClick={() => go('subscription')}>
-            Renew Now · LKR 2,500/mo
-          </button>
+          <div className="row" style={{gap:6}}>
+            <button className="btn" style={{flex:1,background:'var(--brown)',color:'#fff',padding:'8px',fontSize:12}} onClick={() => go('subscription')}>
+              Renew · LKR 2,500/mo
+            </button>
+            <button className="btn btn-secondary" style={{padding:'8px 10px',fontSize:11.5}} onClick={() => setShowGate(true)}>
+              Preview gate
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -35,30 +41,45 @@ function VendorHomeScreen({ go }) {
           <StatCard icon="star" label="Rating" value="4.9" trend="86 reviews" trendDir="up" bg="#FEF3C7" fg="#92400E" />
         </div>
 
+        {/* Pending response */}
+        <div className="card card-pad" style={{marginTop:14,background:'#FEF3C7',border:'1px solid #FCD56B'}}>
+          <div className="row" style={{gap:10}}>
+            <div style={{width:34,height:34,borderRadius:10,background:'#92400E',display:'grid',placeItems:'center',flex:'0 0 34px'}}>
+              <Icon name="clock" size={16} color="#fff" />
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#92400E'}}>2 jobs awaiting response</div>
+              <div style={{fontSize:11.5,color:'#92400E',marginTop:2}}>Accept within 6h or owner reassigns</div>
+            </div>
+            <button className="btn" style={{background:'#92400E',color:'#fff',padding:'8px 12px',fontSize:12}} onClick={() => go('jobs')}>
+              View
+            </button>
+          </div>
+        </div>
+
         {/* Upcoming jobs */}
         <div className="section-head" style={{marginTop:18}}>
           <h2>Upcoming Jobs</h2>
           <a href="#" onClick={e => { e.preventDefault(); go('jobs'); }}>View all</a>
         </div>
         <div className="stack" style={{gap:10}}>
-          {window.MOCK.VENDOR_JOBS.slice(0,3).map((j, i) => (
+          {window.MOCK.VENDOR_JOBS.filter(j => j.status !== 'COMPLETED').slice(0,3).map((j, i) => (
             <button
               key={j.id}
               className="card card-pad row"
               onClick={() => go('jobDetail', { job: j })}
               style={{gap:12,padding:'14px',width:'100%',textAlign:'left'}}
             >
-              <div style={{width:48,height:48,borderRadius:12,background: i === 0 ? 'var(--primary-100)' : 'var(--sky-100)',display:'grid',placeItems:'center',flex:'0 0 48px'}}>
-                <div style={{fontSize:9,fontWeight:600,color: i === 0 ? 'var(--primary-700)' : '#1E5A87'}}>{j.date.split(' ')[1]}</div>
-                <div style={{position:'absolute',marginTop:-4,fontSize:11,fontWeight:700,color: i === 0 ? 'var(--primary-700)' : '#1E5A87'}}>{j.date.split(',')[1]?.trim().split(' ')[1] || '19'}</div>
+              <div style={{width:48,height:48,borderRadius:12,background: i === 0 ? 'var(--primary-100)' : 'var(--sky-100)',display:'grid',placeItems:'center',flex:'0 0 48px',color: i === 0 ? 'var(--primary-700)' : '#1E5A87',fontSize:11,fontWeight:700}}>
+                {j.date.split(' ')[1]?.replace(',','') || '19'}
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div className="row between">
-                  <span style={{fontSize:13.5,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{j.safari.split('—')[0].trim()}</span>
-                  <Badge kind={j.status === 'pending' ? 'pending' : 'confirmed'}>{j.status}</Badge>
+                  <span style={{fontSize:13,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{j.safari.split('·')[0].trim()}</span>
+                  <Badge kind={j.status}>{j.status.toLowerCase()}</Badge>
                 </div>
                 <div className="row between" style={{marginTop:2}}>
-                  <span style={{fontSize:11.5,color:'var(--text-3)'}}>{j.date.split(',')[1]?.trim() || j.date} · {j.customers} pax</span>
+                  <span style={{fontSize:11.5,color:'var(--text-3)',fontFamily:'JetBrains Mono'}}>{j.safari.split('·')[1]?.trim()}</span>
                   <span style={{fontSize:13,fontWeight:700,color:'var(--primary)'}} className="tnum">LKR {j.payment.toLocaleString()}</span>
                 </div>
               </div>
@@ -66,15 +87,56 @@ function VendorHomeScreen({ go }) {
           ))}
         </div>
       </div>
+
+      {/* Expired-subscription gate preview */}
+      {showGate && (
+        <div className="sheet-backdrop" onClick={() => setShowGate(false)}>
+          <div className="sheet" onClick={e => e.stopPropagation()} style={{textAlign:'center'}}>
+            <div className="sheet-handle" />
+            <div style={{width:80,height:80,borderRadius:24,background:'#FEE2E2',display:'grid',placeItems:'center',margin:'8px auto 18px'}}>
+              <Icon name="lock" size={36} color="#991B1B" />
+            </div>
+            <h3 style={{margin:'0 0 8px',fontSize:18,fontWeight:800}}>Subscription expired</h3>
+            <p style={{fontSize:13,color:'var(--text-2)',margin:'0 0 18px',lineHeight:1.5}}>
+              Your Vendor Pro plan ended. You'll be removed from owners' vendor pickers until you renew.
+            </p>
+            <div style={{padding:'10px 12px',background:'var(--bg)',borderRadius:10,marginBottom:14,fontSize:11.5,color:'var(--text-2)',textAlign:'left'}}>
+              <strong style={{display:'block',marginBottom:4,color:'var(--text)'}}>What stops working:</strong>
+              · Can't accept new jobs<br/>
+              · Removed from owner vendor lists<br/>
+              · No new WhatsApp notifications
+            </div>
+            <button className="btn btn-primary btn-lg btn-block" onClick={() => { setShowGate(false); go('subscription'); }}>Renew now</button>
+            <button onClick={() => setShowGate(false)} style={{width:'100%',marginTop:10,padding:8,color:'var(--text-3)',fontSize:12.5,fontWeight:500}}>Close preview</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function VendorJobsScreen({ go }) {
   const [tab, setTab] = useState('upcoming');
+  const [actioned, setActioned] = useState({});
+  const toast = useToast();
+  const filtered = window.MOCK.VENDOR_JOBS.filter(j => {
+    if (tab === 'upcoming') return ['PENDING','ACCEPTED'].includes(j.status);
+    if (tab === 'completed') return j.status === 'COMPLETED';
+    return true;
+  });
+
+  const respond = (job, response) => {
+    setActioned(a => ({...a, [job.id]: response}));
+    if (response === 'ACCEPT') {
+      toast(`Accepted · WhatsApp sent to ${job.owner}`);
+    } else {
+      toast(`Declined · ${job.owner} will reassign`, 'info');
+    }
+  };
+
   return (
     <div className="app-body" style={{paddingBottom:110}}>
-      <TopBar title="Jobs" subtitle="3 upcoming this week" onBell={() => go('notifications')} notifCount={2} />
+      <TopBar title="Jobs" subtitle="2 awaiting response" onBell={() => go('notifications')} notifCount={2} />
       <div style={{padding:'0 16px'}}>
         <Tabs
           items={[{id:'upcoming',label:'Upcoming'},{id:'completed',label:'Completed'},{id:'all',label:'All'}]}
@@ -82,45 +144,63 @@ function VendorJobsScreen({ go }) {
           onChange={setTab}
         />
 
-        <div style={{marginTop:10,marginBottom:14,padding:'10px 12px',background:'var(--sky-100)',borderRadius:10,display:'flex',gap:10,alignItems:'center'}}>
-          <Icon name="info" size={14} color="#1E5A87" />
-          <span style={{fontSize:11.5,color:'#1E5A87',fontWeight:500,lineHeight:1.4}}>Swipe right to accept · Swipe left to decline</span>
+        <div style={{marginTop:10,marginBottom:14,padding:'10px 12px',background:'rgba(37,211,102,0.08)',borderRadius:10,display:'flex',gap:10,alignItems:'center'}}>
+          <Icon name="message-circle" size={14} color="#128C7E" />
+          <span style={{fontSize:11.5,color:'#0F5E45',fontWeight:500,lineHeight:1.4}}>Owners are notified by WhatsApp the moment you accept or decline.</span>
         </div>
 
         <div className="stack" style={{gap:12}}>
-          {window.MOCK.VENDOR_JOBS.map((j, i) => (
-            <div key={j.id} className="card" style={{position:'relative',overflow:'hidden'}}>
-              {/* swipe hint */}
-              {i === 1 && (
-                <div style={{position:'absolute',top:0,bottom:0,right:0,width:60,background:'linear-gradient(90deg, transparent, #DCFCE7)',display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'0 14px'}}>
-                  <Icon name="check" size={20} color="#166534" />
-                </div>
-              )}
-              <button onClick={() => go('jobDetail', { job: j })} style={{padding:14,width:'100%',textAlign:'left',display:'block',position:'relative'}}>
-                <div className="row between" style={{marginBottom:10}}>
-                  <span style={{fontSize:10.5,color:'var(--text-3)',fontWeight:600,fontFamily:'JetBrains Mono'}}>{j.id}</span>
-                  <Badge kind={j.status === 'pending' ? 'pending' : 'confirmed'}>{j.status}</Badge>
-                </div>
-                <div style={{fontSize:14.5,fontWeight:700,letterSpacing:'-0.01em',marginBottom:6}}>{j.safari}</div>
-                <div className="row" style={{gap:6,fontSize:12,color:'var(--text-2)',marginBottom:4}}>
-                  <Icon name="calendar" size={13} />
-                  <span>{j.date}</span>
-                </div>
-                <div className="row" style={{gap:6,fontSize:12,color:'var(--text-2)',marginBottom:4}}>
-                  <Icon name="map-pin" size={13} />
-                  <span>{j.location}</span>
-                </div>
-                <div className="row" style={{gap:6,fontSize:12,color:'var(--text-2)',marginBottom:10}}>
-                  <Icon name="user" size={13} />
-                  <span>{j.owner} · {j.customers} customers</span>
-                </div>
-                <div className="row between" style={{paddingTop:10,borderTop:'1px solid var(--line-soft)'}}>
-                  <span style={{fontSize:11.5,color:'var(--text-3)',fontWeight:500}}>Payment</span>
-                  <span style={{fontSize:15,fontWeight:700,color:'var(--primary)'}} className="tnum">LKR {j.payment.toLocaleString()}</span>
-                </div>
-              </button>
-            </div>
-          ))}
+          {filtered.map((j) => {
+            const userAction = actioned[j.id];
+            const effectiveStatus = userAction === 'ACCEPT' ? 'ACCEPTED' : userAction === 'DECLINE' ? 'DECLINED' : j.status;
+            return (
+              <div key={j.id} className="card" style={{position:'relative',overflow:'hidden',
+                opacity: effectiveStatus === 'DECLINED' ? 0.55 : 1,
+                borderColor: effectiveStatus === 'ACCEPTED' ? 'rgba(45,106,79,0.25)' : 'var(--line)',
+              }}>
+                <button onClick={() => go('jobDetail', { job: j })} style={{padding:14,width:'100%',textAlign:'left',display:'block',position:'relative'}}>
+                  <div className="row between" style={{marginBottom:10}}>
+                    <span style={{fontSize:10.5,color:'var(--text-3)',fontWeight:600,fontFamily:'JetBrains Mono'}}>{j.id}</span>
+                    <Badge kind={effectiveStatus}>{effectiveStatus.toLowerCase()}</Badge>
+                  </div>
+                  <div style={{fontSize:14.5,fontWeight:700,letterSpacing:'-0.01em',marginBottom:6}}>{j.safari}</div>
+                  <div className="row" style={{gap:6,fontSize:12,color:'var(--text-2)',marginBottom:4}}>
+                    <Icon name="calendar" size={13} />
+                    <span>{j.date}</span>
+                  </div>
+                  <div className="row" style={{gap:6,fontSize:12,color:'var(--text-2)',marginBottom:4}}>
+                    <Icon name="map-pin" size={13} />
+                    <span>{j.location}</span>
+                  </div>
+                  <div className="row" style={{gap:6,fontSize:12,color:'var(--text-2)',marginBottom:10}}>
+                    <Icon name="user" size={13} />
+                    <span>{j.owner} · {j.customers} customers</span>
+                  </div>
+                  <div className="row between" style={{paddingTop:10,borderTop:'1px solid var(--line-soft)'}}>
+                    <span style={{fontSize:11.5,color:'var(--text-3)',fontWeight:500}}>Your fee</span>
+                    <span style={{fontSize:15,fontWeight:700,color:'var(--primary)'}} className="tnum">LKR {j.payment.toLocaleString()}</span>
+                  </div>
+                </button>
+
+                {effectiveStatus === 'PENDING' && (
+                  <div className="row" style={{gap:8,padding:'0 14px 14px'}}>
+                    <button className="btn btn-secondary" style={{flex:1,padding:'10px',fontSize:13}} onClick={(e) => { e.stopPropagation(); respond(j, 'DECLINE'); }}>
+                      <Icon name="x" size={14} /> Decline
+                    </button>
+                    <button className="btn btn-primary" style={{flex:1.4,padding:'10px',fontSize:13}} onClick={(e) => { e.stopPropagation(); respond(j, 'ACCEPT'); }}>
+                      <Icon name="check" size={14} color="#fff" /> Accept
+                    </button>
+                  </div>
+                )}
+                {effectiveStatus === 'ACCEPTED' && (
+                  <div style={{padding:'10px 14px',background:'rgba(45,106,79,0.06)',borderTop:'1px solid var(--line-soft)',display:'flex',alignItems:'center',gap:8,fontSize:11.5,color:'var(--primary-700)',fontWeight:600}}>
+                    <Icon name="check-circle-2" size={13} color="var(--primary)" />
+                    Accepted · Owner notified via WhatsApp
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

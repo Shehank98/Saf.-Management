@@ -41,7 +41,14 @@ function NotificationsScreen({ go, back = 'home' }) {
                       <Icon name={m.ico} size={16} color={m.color} />
                     </div>
                     <div className="body">
-                      <strong>{n.title}</strong>
+                      <div className="row between" style={{marginBottom:1}}>
+                        <strong>{n.title}</strong>
+                        {n.channel === 'whatsapp' && (
+                          <span className="wa-pill outline" style={{fontSize:8.5,padding:'2px 6px'}}>
+                            <Icon name="message-circle" size={8} color="#128C7E" /> WhatsApp
+                          </span>
+                        )}
+                      </div>
                       <p>{n.body}</p>
                       <div className="time">{n.time}</div>
                     </div>

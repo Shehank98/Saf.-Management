@@ -13,13 +13,13 @@ const SCREENS = {
   customer: [
     { id: 'browse', label: 'Browse Safaris', num: '05' },
     { id: 'detail', label: 'Safari Detail', num: '06' },
-    { id: 'payment', label: 'Payment', num: '07' },
+    { id: 'publicPay', label: 'WhatsApp Pay Link', num: '07' },
     { id: 'bookings', label: 'My Bookings', num: '08' },
   ],
   owner: [
     { id: 'home', label: 'Dashboard', num: '09' },
-    { id: 'shared', label: 'Shared Safaris', num: '10' },
-    { id: 'createShared', label: 'Create Safari', num: '11' },
+    { id: 'shared', label: 'Shared Jeeps', num: '10' },
+    { id: 'pricing', label: 'Pricing Setup', num: '11' },
     { id: 'private', label: 'Private Safaris', num: '12' },
     { id: 'createPrivate', label: 'Create Private', num: '13' },
     { id: 'payments', label: 'Vendor Payments', num: '14' },
@@ -108,7 +108,7 @@ function App() {
 
   const tabs = NAV_TABS[role];
   const showNav = role !== 'auth' && ![
-    'detail','payment','createShared','createPrivate','jobDetail','pushPerm','offline','login','register','pending','landing',
+    'detail','publicPay','payment','createShared','createPrivate','pricing','jobDetail','pushPerm','offline','login','register','pending','landing',
     'users','features','billing','locations',
   ].includes(screen);
 
@@ -125,7 +125,7 @@ function App() {
     if (role === 'customer') {
       if (screen === 'browse') return <BrowseScreen go={go} />;
       if (screen === 'detail') return <SafariDetailScreen go={go} safari={navState.safari} />;
-      if (screen === 'payment') return <PaymentScreen go={go} total={navState.total} safari={navState.safari} seats={navState.seats} />;
+      if (screen === 'payment' || screen === 'publicPay') return <PublicBookingPayScreen go={go} />;
       if (screen === 'bookings') return <MyBookingsScreen go={go} />;
       if (screen === 'notifications') return <NotificationsScreen go={go} back="browse" />;
       if (screen === 'profile') return <ProfilePlaceholder go={go} role="customer" />;
@@ -133,7 +133,7 @@ function App() {
     if (role === 'owner') {
       if (screen === 'home') return <OwnerHomeScreen go={go} />;
       if (screen === 'shared') return <SharedSafarisScreen go={go} />;
-      if (screen === 'createShared') return <CreateSharedSafariScreen go={go} />;
+      if (screen === 'pricing' || screen === 'createShared') return <PricingSetupScreen go={go} />;
       if (screen === 'private') return <PrivateSafarisScreen go={go} />;
       if (screen === 'createPrivate') return <CreatePrivateSafariScreen go={go} />;
       if (screen === 'payments') return <VendorPaymentsScreen go={go} />;

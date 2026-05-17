@@ -369,6 +369,117 @@ a { color: inherit; text-decoration: none; }
 .badge.upcoming { background: var(--sky-100); color: #1E5A87; }
 .badge.draft { background: var(--sand); color: #8B5E1A; }
 .badge.private { background: var(--brown-100); color: #5C3A1F; }
+.badge.reserved { background: var(--sky-100); color: #1E5A87; }
+.badge.payment_pending { background: #FEF3C7; color: #92400E; }
+.badge.paid { background: #DCFCE7; color: #166534; }
+.badge.released { background: #F3F4F6; color: #4B5563; }
+.badge.auto_cancelled { background: #FEE2E2; color: #991B1B; }
+.badge.OPEN { background: var(--sand); color: #8B5E1A; }
+.badge.PENDING_PAYMENT { background: #FEF3C7; color: #92400E; }
+.badge.CONFIRMED { background: #DCFCE7; color: #166534; }
+.badge.COMPLETED { background: var(--primary-100); color: var(--primary-700); }
+.badge.CANCELLED { background: #FEE2E2; color: #991B1B; }
+.badge.ACCEPTED { background: #DCFCE7; color: #166534; }
+.badge.PENDING { background: #FEF3C7; color: #92400E; }
+.badge.DECLINED { background: #FEE2E2; color: #991B1B; }
+
+/* Occupancy bar */
+.occ-bar {
+  position: relative;
+  height: 7px;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: visible;
+  margin: 6px 0 4px;
+}
+.occ-bar .fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+.occ-bar .fill .paid { background: var(--primary); height: 100%; }
+.occ-bar .fill .reserved { background: repeating-linear-gradient(45deg, var(--primary) 0 4px, rgba(45,106,79,0.5) 4px 8px); height: 100%; opacity: 0.7; }
+.occ-bar .min-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--brown);
+  border-radius: 1px;
+}
+.occ-bar .min-mark::after {
+  content: 'min 4';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--brown);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Countdown */
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #FEF3C7;
+  color: #92400E;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.countdown.danger { background: #FEE2E2; color: #991B1B; }
+.countdown.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.8s infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* WhatsApp channel pill */
+.wa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #25D366;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.wa-pill.outline {
+  background: rgba(37, 211, 102, 0.12);
+  color: #128C7E;
+}
+
+/* Status pipeline */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pipeline .step {
+  flex: 1;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+}
+.pipeline .step.done { background: var(--primary); }
+.pipeline .step.active { background: var(--brown); }
 
 /* ---- Form controls ---- */
 .field { margin-bottom: 14px; }

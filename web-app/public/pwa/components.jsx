@@ -147,21 +147,61 @@ function SafariThumb({ index = 0, type, name }) {
 }
 
 function SafariCard({ safari, onClick, dense }) {
+  const paid = safari.paidSeats || 0;
+  const reserved = safari.reservedSeats || 0;
+  const total = safari.totalSeats || safari.seats || 6;
+  const min = safari.minSeats || 4;
+  const filledPct = ((paid + reserved) / total) * 100;
+  const paidPct = (paid / total) * 100;
+  const minPct = (min / total) * 100;
+  const isConfirmed = safari.status === 'CONFIRMED' || safari.status === 'PENDING_PAYMENT';
+  const remaining = min - paid;
+
   return (
     <button className="safari-card" onClick={onClick} style={{textAlign:'left',width:'100%',display:'block'}}>
       <SafariThumb index={safari.thumb} type={safari.type} name={safari.name} />
       <div className="safari-card-body">
-        <div className="safari-card-title">{safari.name}</div>
-        <div className="safari-card-meta">
-          <Icon name="map-pin" size={12} />
-          <span>{safari.location}</span>
-          <span style={{margin:'0 4px'}}>·</span>
-          <Icon name="clock" size={12} />
-          <span>{safari.duration}</span>
+        <div className="row between" style={{alignItems:'flex-start',marginBottom: 4}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="safari-card-title">{safari.name}</div>
+            <div className="safari-card-meta" style={{marginBottom:0}}>
+              <Icon name="map-pin" size={12} />
+              <span>{safari.location}</span>
+              <span style={{margin:'0 4px'}}>·</span>
+              <Icon name="clock" size={12} />
+              <span>{safari.time}</span>
+            </div>
+          </div>
+          {safari.status && safari.status !== 'OPEN' && (
+            <Badge kind={safari.status}>
+              {safari.status === 'PENDING_PAYMENT' ? 'Paying' : safari.status === 'CONFIRMED' ? 'Confirmed' : safari.status}
+            </Badge>
+          )}
         </div>
-        <div className="safari-card-footer">
-          <div className="price">LKR {safari.price.toLocaleString()} <small>/seat</small></div>
-          <div className="seat-pill">{safari.seats - safari.taken} of {safari.seats} seats</div>
+
+        <div style={{marginTop: 12}}>
+          <div className="occ-bar">
+            <div className="fill">
+              <div className="paid" style={{width: paidPct + '%'}} />
+              <div className="reserved" style={{width: ((reserved / total) * 100) + '%'}} />
+            </div>
+            <div className="min-mark" style={{left: `calc(${minPct}% - 1px)`, top: 0, bottom: 0}} />
+          </div>
+          <div className="row between" style={{marginTop:8}}>
+            <div style={{fontSize:11,color:'var(--text-2)',fontWeight:600}}>
+              {isConfirmed ? (
+                <span style={{color:'var(--success)'}}>
+                  <Icon name="check-circle-2" size={11} style={{marginRight:3,verticalAlign:'-2px'}} />
+                  4-seat minimum hit
+                </span>
+              ) : (
+                <span style={{color: remaining <= 1 ? 'var(--brown)' : 'var(--text-2)'}}>
+                  {paid}/{min} paid · need {remaining} more
+                </span>
+              )}
+            </div>
+            <div className="price" style={{fontSize:15}}>LKR {safari.price.toLocaleString()} <small>/seat</small></div>
+          </div>
         </div>
       </div>
     </button>
