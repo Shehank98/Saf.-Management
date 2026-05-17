@@ -156,11 +156,8 @@ export default function LoginPage() {
                 <input
                   id="email"
                   type="email"
-                  className="w-full h-11 rounded-[10px] px-4 text-sm outline-none transition-colors"
-                  style={{ border: '1.5px solid #E8E5DE', background: '#FAFAF7', color: '#1A1A1A' }}
+                  className="safari-input"
                   placeholder="you@example.com"
-                  onFocus={e => { e.target.style.borderColor = '#2D6A4F'; e.target.style.background = '#fff'; }}
-                  onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.background = '#FAFAF7'; }}
                   {...register('email')}
                 />
                 {errors.email && <p className="text-xs mt-1.5" style={{ color: '#C0392B' }}>{errors.email.message}</p>}
@@ -174,11 +171,8 @@ export default function LoginPage() {
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    className="w-full h-11 rounded-[10px] px-4 pr-12 text-sm outline-none transition-colors"
-                    style={{ border: '1.5px solid #E8E5DE', background: '#FAFAF7', color: '#1A1A1A' }}
+                    className="safari-input pr-12"
                     placeholder="••••••••"
-                    onFocus={e => { e.target.style.borderColor = '#2D6A4F'; e.target.style.background = '#fff'; }}
-                    onBlur={e => { e.target.style.borderColor = '#E8E5DE'; e.target.style.background = '#FAFAF7'; }}
                     {...register('password')}
                   />
                   <button
