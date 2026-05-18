@@ -1,12 +1,12 @@
 'use client';
 
-import { LucideIcon, Leaf, X } from 'lucide-react';
+import { Compass, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface NavItem {
   key: string;
   label: string;
-  icon: LucideIcon;
+  icon: any;
   danger?: boolean;
 }
 
@@ -26,38 +26,30 @@ export function Sidebar({ items, activeTab, onTabChange, mobileOpen, onMobileClo
 
   return (
     <>
-      {/* Mobile overlay */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          onClick={onMobileClose}
-        />
+        <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={onMobileClose} />
       )}
-
-      {/* Sidebar panel */}
-      <aside
-        className={cn(
-          'fixed left-0 top-0 z-40 flex h-full w-[var(--sidebar-width,240px)] flex-col bg-white border-r border-border transition-transform duration-200 ease-in-out',
-          'lg:relative lg:translate-x-0 lg:flex lg:shrink-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )}
-      >
-        {/* Logo */}
-        <div className="flex h-14 items-center gap-2.5 border-b border-border px-5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-            <Leaf className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
+      <aside className={cn(
+        'fixed left-0 top-0 z-40 flex h-full w-60 flex-col border-r transition-transform duration-200',
+        'lg:relative lg:translate-x-0 lg:flex lg:shrink-0',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      )} style={{ background: '#fff', borderColor: '#E8E5DE' }}>
+        {/* Brand */}
+        <div className="pwa-sidebar-brand">
+          <div className="mark">
+            <Compass size={18} color="#fff" strokeWidth={2} />
           </div>
-          <span className="text-sm font-semibold tracking-tight text-foreground">SafariPro</span>
-          <button
-            className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-muted lg:hidden"
-            onClick={onMobileClose}
-          >
-            <X className="h-4 w-4" />
+          <div>
+            <div className="name">Safari Adventures</div>
+            <div className="sub">Management Platform</div>
+          </div>
+          <button className="ml-auto lg:hidden p-1 rounded-md" style={{ color: '#8A8A8A' }} onClick={onMobileClose}>
+            <X size={16} />
           </button>
         </div>
 
-        {/* Nav items */}
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
+        {/* Nav */}
+        <nav className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
@@ -65,16 +57,11 @@ export function Sidebar({ items, activeTab, onTabChange, mobileOpen, onMobileClo
               <button
                 key={item.key}
                 onClick={() => handleClick(item.key)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : item.danger
-                    ? 'text-red-500 hover:bg-red-50'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
+                className={cn('pwa-nav-btn', isActive && 'active', item.danger && 'danger')}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <div className="ico" style={isActive ? {} : { background: '#F1EEE7' }}>
+                  <Icon size={15} color={isActive ? '#fff' : item.danger ? '#C0392B' : '#555'} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
                 {item.label}
               </button>
             );

@@ -5,9 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import { formatCurrency, formatShortDate } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert } from '@/components/ui/alert';
 import { StatCard } from '@/components/ui/stat-card';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { NavItem } from '@/components/layout/Sidebar';
@@ -44,6 +41,21 @@ const STATUS_COLORS: Record<string, string> = {
   CONFIRMED:       'bg-emerald-50 text-emerald-700 border-emerald-200',
   COMPLETED:       'bg-gray-50 text-gray-700 border-gray-200',
   CANCELLED:       'bg-red-50 text-red-700 border-red-200',
+};
+
+// PWA badge class mapping for safari booking statuses
+const STATUS_PWA_BADGE: Record<string, string> = {
+  INQUIRY:         'pwa-badge pwa-badge-blue',
+  DEPOSIT_PENDING: 'pwa-badge pwa-badge-amber',
+  DEPOSIT_PAID:    'pwa-badge pwa-badge-green',
+  CONFIRMED:       'pwa-badge pwa-badge-green',
+  COMPLETED:       'pwa-badge pwa-badge-gray',
+  CANCELLED:       'pwa-badge pwa-badge-red',
+  OPEN:            'pwa-badge pwa-badge-blue',
+  PENDING_PAYMENT: 'pwa-badge pwa-badge-amber',
+  FULLY_BOOKED:    'pwa-badge pwa-badge-green',
+  PAID:            'pwa-badge pwa-badge-green',
+  PENDING:         'pwa-badge pwa-badge-amber',
 };
 
 const fadeIn = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } };
@@ -261,7 +273,8 @@ export default function OwnerDashboard() {
       userRole={me?.role}
       onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
     >
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
         {/* Subscription banner */}
         {me?.safariOwner?.subscriptionStatus && (() => {
           const s = me.safariOwner!;
@@ -270,42 +283,54 @@ export default function OwnerDashboard() {
             : null;
           if (s.subscriptionStatus === 'EXPIRED')
             return (
-              <Alert variant="destructive" icon={<AlertCircle className="w-4 h-4" />} title="Subscription Expired">
-                Your account is inactive. Contact Super Admin to renew your subscription.
-              </Alert>
+              <div className="pwa-notice pwa-notice-red">
+                <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>Subscription Expired</p>
+                  <p style={{ fontSize: 13 }}>Your account is inactive. Contact Super Admin to renew your subscription.</p>
+                </div>
+              </div>
             );
           if (s.subscriptionStatus === 'PENDING_PAYMENT')
             return (
-              <Alert variant="warning" icon={<Clock className="w-4 h-4" />} title="Subscription Pending Payment">
-                Contact Super Admin to complete your subscription payment (LKR 2,500/month).
-              </Alert>
+              <div className="pwa-notice pwa-notice-amber">
+                <Clock style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>Subscription Pending Payment</p>
+                  <p style={{ fontSize: 13 }}>Contact Super Admin to complete your subscription payment (LKR 2,500/month).</p>
+                </div>
+              </div>
             );
           if (s.subscriptionStatus === 'ACTIVE' && daysLeft !== null && daysLeft <= 14)
             return (
-              <Alert variant="warning" icon={<CalendarClock className="w-4 h-4" />} title="Subscription Expiring Soon">
-                Expires on {new Date(s.subscriptionEnd!).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left). Contact Super Admin to renew.
-              </Alert>
+              <div className="pwa-notice pwa-notice-amber">
+                <CalendarClock style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>Subscription Expiring Soon</p>
+                  <p style={{ fontSize: 13 }}>
+                    Expires on {new Date(s.subscriptionEnd!).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left). Contact Super Admin to renew.
+                  </p>
+                </div>
+              </div>
             );
           return null;
         })()}
 
         {/* No features */}
         {features.length === 0 && (
-          <Card className="mb-6">
-            <CardContent className="p-8 text-center">
-              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Lock className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <p className="font-semibold text-gray-700">No features enabled yet</p>
-              <p className="text-gray-400 text-sm mt-1">The Super Admin will assign features to your account.</p>
-            </CardContent>
-          </Card>
+          <div className="pwa-card" style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, background: '#F1EEE7', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <Lock style={{ width: 24, height: 24, color: '#8A8A8A' }} />
+            </div>
+            <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 4 }}>No features enabled yet</p>
+            <p style={{ color: '#8A8A8A', fontSize: 13 }}>The Super Admin will assign features to your account.</p>
+          </div>
         )}
 
         <AnimatePresence mode="wait">
           {/* ========== OVERVIEW ========== */}
           {tab === 'overview' && (
-            <motion.div key="overview" {...fadeIn} className="space-y-6">
+            <motion.div key="overview" {...fadeIn} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {has('PRIVATE_SAFARI') && (
@@ -326,36 +351,51 @@ export default function OwnerDashboard() {
               {features.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {has('PRIVATE_SAFARI') && (
-                    <motion.button initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
                       onClick={() => setTab('private')}
-                      className="bg-amber-50 hover:bg-amber-100 border-2 border-amber-100 rounded-2xl p-5 text-left transition-all hover:shadow-md">
-                      <div className="w-10 h-10 bg-amber-200 rounded-xl flex items-center justify-center mb-3">
-                        <Globe className="w-5 h-5 text-amber-700" />
+                      style={{
+                        background: '#FAEFD9', border: '2px solid #F4E1C1', borderRadius: 14,
+                        padding: 20, textAlign: 'left', transition: 'all 0.18s', cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ width: 40, height: 40, background: '#F4E1C1', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                        <Globe style={{ width: 20, height: 20, color: '#8B5E3C' }} />
                       </div>
-                      <p className="font-semibold text-gray-800">Private Safaris</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Manual bookings you control</p>
+                      <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>Private Safaris</p>
+                      <p style={{ fontSize: 12, color: '#8A8A8A' }}>Manual bookings you control</p>
                     </motion.button>
                   )}
                   {has('SHARED_TRIPS') && (
-                    <motion.button initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.16 }}
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.16 }}
                       onClick={() => setTab('shared')}
-                      className="bg-green-50 hover:bg-green-100 border-2 border-green-100 rounded-2xl p-5 text-left transition-all hover:shadow-md">
-                      <div className="w-10 h-10 bg-green-200 rounded-xl flex items-center justify-center mb-3">
-                        <Car className="w-5 h-5 text-green-700" />
+                      style={{
+                        background: '#E3EFE9', border: '2px solid #C6DDD1', borderRadius: 14,
+                        padding: 20, textAlign: 'left', transition: 'all 0.18s', cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ width: 40, height: 40, background: '#C6DDD1', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                        <Car style={{ width: 20, height: 20, color: '#2D6A4F' }} />
                       </div>
-                      <p className="font-semibold text-gray-800">Shared Safaris</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Group bookings via link</p>
+                      <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>Shared Safaris</p>
+                      <p style={{ fontSize: 12, color: '#8A8A8A' }}>Group bookings via link</p>
                     </motion.button>
                   )}
                   {has('VENDOR_LISTINGS') && (
-                    <motion.button initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.22 }}
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.22 }}
                       onClick={() => setTab('vendors')}
-                      className="bg-blue-50 hover:bg-blue-100 border-2 border-blue-100 rounded-2xl p-5 text-left transition-all hover:shadow-md">
-                      <div className="w-10 h-10 bg-blue-200 rounded-xl flex items-center justify-center mb-3">
-                        <Wallet className="w-5 h-5 text-blue-700" />
+                      style={{
+                        background: '#DBEAFE', border: '2px solid #BFDBFE', borderRadius: 14,
+                        padding: 20, textAlign: 'left', transition: 'all 0.18s', cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ width: 40, height: 40, background: '#BFDBFE', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                        <Wallet style={{ width: 20, height: 20, color: '#1E40AF' }} />
                       </div>
-                      <p className="font-semibold text-gray-800">Vendor Payments</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Pay your vendors</p>
+                      <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>Vendor Payments</p>
+                      <p style={{ fontSize: 12, color: '#8A8A8A' }}>Pay your vendors</p>
                     </motion.button>
                   )}
                 </div>
@@ -365,18 +405,19 @@ export default function OwnerDashboard() {
 
           {/* ========== PRIVATE SAFARIS ========== */}
           {tab === 'private' && has('PRIVATE_SAFARI') && (
-            <motion.div key="private" {...fadeIn} className="space-y-5">
+            <motion.div key="private" {...fadeIn} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Header */}
-              <div className="flex items-center justify-between">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Private Safaris</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">Manage your manual customer bookings</p>
+                  <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>Private Safaris</h2>
+                  <p style={{ fontSize: 13, color: '#8A8A8A', marginTop: 2 }}>Manage your manual customer bookings</p>
                 </div>
                 <button
                   onClick={() => setShowNewPrivate(true)}
-                  className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-all hover:shadow-md"
+                  className="pwa-btn pwa-btn-primary"
+                  style={{ background: '#8B5E3C', gap: 6 }}
                 >
-                  <span className="text-base leading-none">+</span> New Booking
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New Booking
                 </button>
               </div>
 
@@ -386,7 +427,11 @@ export default function OwnerDashboard() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                  style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                    backdropFilter: 'blur(4px)', zIndex: 50,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+                  }}
                   onClick={(e) => e.target === e.currentTarget && setShowNewPrivate(false)}
                 >
                   <motion.div
@@ -394,56 +439,69 @@ export default function OwnerDashboard() {
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.94, opacity: 0, y: 16 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-                    className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto"
+                    style={{
+                      background: '#fff', borderRadius: 20,
+                      boxShadow: '0 20px 48px rgba(0,0,0,0.18)',
+                      width: '100%', maxWidth: 520, maxHeight: '92vh', overflowY: 'auto',
+                    }}
                   >
                     {/* Modal header */}
-                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '24px 24px 16px', borderBottom: '1px solid #E8E5DE',
+                    }}>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">New Private Safari Booking</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">Fill in the customer and safari details</p>
+                        <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>New Private Safari Booking</h3>
+                        <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 3 }}>Fill in the customer and safari details</p>
                       </div>
                       <button
                         onClick={() => setShowNewPrivate(false)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-lg"
+                        style={{
+                          width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          borderRadius: '50%', border: 'none', background: 'transparent',
+                          color: '#8A8A8A', cursor: 'pointer', fontSize: 20, lineHeight: 1,
+                        }}
                       >
                         ×
                       </button>
                     </div>
 
-                    <div className="px-6 py-5 space-y-5">
+                    <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
                       {/* Customer Info section */}
                       <div>
-                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Customer Information</p>
-                        <div className="space-y-3">
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Customer Information</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                           <div>
-                            <label className="text-sm font-medium text-gray-700">Customer Name <span className="text-red-500">*</span></label>
+                            <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
+                              Customer Name <span style={{ color: '#C0392B' }}>*</span>
+                            </label>
                             <input
                               type="text"
                               placeholder="e.g. John Silva"
                               value={newPrivateForm.customerName}
                               onChange={(e) => setNewPrivateForm((p) => ({ ...p, customerName: e.target.value }))}
-                              className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              className="pwa-input"
                             />
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div>
-                              <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                              <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Phone Number</label>
                               <input
                                 type="tel"
                                 placeholder="+94771234567"
                                 value={newPrivateForm.customerPhone}
                                 onChange={(e) => setNewPrivateForm((p) => ({ ...p, customerPhone: e.target.value }))}
-                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                                className="pwa-input"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium text-gray-700">Email Address</label>
+                              <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Email Address</label>
                               <input
                                 type="email"
                                 placeholder="john@example.com"
                                 value={newPrivateForm.customerEmail}
                                 onChange={(e) => setNewPrivateForm((p) => ({ ...p, customerEmail: e.target.value }))}
-                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                                className="pwa-input"
                               />
                             </div>
                           </div>
@@ -452,37 +510,43 @@ export default function OwnerDashboard() {
 
                       {/* Safari Details section */}
                       <div>
-                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Safari Details</p>
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Safari Details</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div>
-                              <label className="text-sm font-medium text-gray-700">Safari Date <span className="text-red-500">*</span></label>
+                              <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
+                                Safari Date <span style={{ color: '#C0392B' }}>*</span>
+                              </label>
                               <input
                                 type="date"
                                 value={newPrivateForm.safariDate}
                                 onChange={(e) => setNewPrivateForm((p) => ({ ...p, safariDate: e.target.value }))}
-                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                                className="pwa-input"
                               />
                             </div>
                             <div>
-                              <label className="text-sm font-medium text-gray-700">No. of Guests <span className="text-red-500">*</span></label>
+                              <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
+                                No. of Guests <span style={{ color: '#C0392B' }}>*</span>
+                              </label>
                               <input
                                 type="number"
                                 min="1"
                                 placeholder="e.g. 4"
                                 value={newPrivateForm.numberOfGuests}
                                 onChange={(e) => setNewPrivateForm((p) => ({ ...p, numberOfGuests: e.target.value }))}
-                                className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                                className="pwa-input"
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium text-gray-700">Safari Location <span className="text-red-500">*</span></label>
+                            <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
+                              Safari Location <span style={{ color: '#C0392B' }}>*</span>
+                            </label>
                             <select
                               value={newPrivateForm.locationId}
                               onChange={(e) => setNewPrivateForm((p) => ({ ...p, locationId: e.target.value }))}
-                              className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              className="pwa-input"
                             >
                               <option value="">Select a location...</option>
                               {ownerLocations.map((l) => (
@@ -492,8 +556,10 @@ export default function OwnerDashboard() {
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium text-gray-700 mb-1.5 block">Safari Type <span className="text-red-500">*</span></label>
-                            <div className="grid grid-cols-3 gap-2">
+                            <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 8 }}>
+                              Safari Type <span style={{ color: '#C0392B' }}>*</span>
+                            </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                               {[
                                 { value: 'Full Day', label: 'Full Day', icon: Sun },
                                 { value: 'Half Day Morning', label: 'Morning', icon: Sunrise },
@@ -503,14 +569,18 @@ export default function OwnerDashboard() {
                                   key={t.value}
                                   type="button"
                                   onClick={() => setNewPrivateForm((p) => ({ ...p, safariType: t.value }))}
-                                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-medium transition-all ${
-                                    newPrivateForm.safariType === t.value
-                                      ? 'border-amber-500 bg-amber-50 text-amber-800'
-                                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-amber-300 hover:bg-amber-50/50'
-                                  }`}
+                                  style={{
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                                    padding: 12, borderRadius: 12,
+                                    border: newPrivateForm.safariType === t.value ? '2px solid #8B5E3C' : '2px solid #E8E5DE',
+                                    background: newPrivateForm.safariType === t.value ? '#FAEFD9' : '#FAFAF7',
+                                    cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                                    color: newPrivateForm.safariType === t.value ? '#8B5E3C' : '#8A8A8A',
+                                    transition: 'all 0.15s',
+                                  }}
                                 >
-                                  <t.icon className={`w-5 h-5 ${newPrivateForm.safariType === t.value ? 'text-amber-600' : 'text-gray-400'}`} />
-                                  <span className="text-center leading-tight">{t.label}</span>
+                                  <t.icon style={{ width: 20, height: 20, color: newPrivateForm.safariType === t.value ? '#8B5E3C' : '#8A8A8A' }} />
+                                  <span style={{ textAlign: 'center', lineHeight: 1.3 }}>{t.label}</span>
                                 </button>
                               ))}
                             </div>
@@ -520,30 +590,36 @@ export default function OwnerDashboard() {
 
                       {/* Pricing section */}
                       <div>
-                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Pricing</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Pricing</p>
                         <div>
-                          <label className="text-sm font-medium text-gray-700">Total Package Price (LKR) <span className="text-red-500">*</span></label>
-                          <div className="relative mt-1.5">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">LKR</span>
+                          <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
+                            Total Package Price (LKR) <span style={{ color: '#C0392B' }}>*</span>
+                          </label>
+                          <div style={{ position: 'relative' }}>
+                            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 13, fontWeight: 600, color: '#8A8A8A' }}>LKR</span>
                             <input
                               type="number"
                               min="0"
                               placeholder="50,000"
                               value={newPrivateForm.totalAmount}
                               onChange={(e) => setNewPrivateForm((p) => ({ ...p, totalAmount: e.target.value }))}
-                              className="block w-full border border-gray-200 bg-gray-50 rounded-xl pl-14 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all"
+                              className="pwa-input"
+                              style={{ paddingLeft: 52 }}
                             />
                           </div>
                           {newPrivateForm.totalAmount && parseFloat(newPrivateForm.totalAmount) > 0 && (
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-2.5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
+                              style={{
+                                marginTop: 10, display: 'flex', alignItems: 'center', gap: 12,
+                                background: '#FAEFD9', border: '1px solid #F4E1C1', borderRadius: 12, padding: '12px 16px',
+                              }}
                             >
-                              <DollarSign className="w-5 h-5 text-amber-600" />
+                              <DollarSign style={{ width: 20, height: 20, color: '#8B5E3C' }} />
                               <div>
-                                <p className="text-xs text-amber-600 font-medium">30% Deposit Required</p>
-                                <p className="text-base font-bold text-amber-800">{formatCurrency(Math.round(parseFloat(newPrivateForm.totalAmount) * 30) / 100)}</p>
+                                <p style={{ fontSize: 12, color: '#8B5E3C', fontWeight: 600, marginBottom: 2 }}>30% Deposit Required</p>
+                                <p style={{ fontSize: 16, fontWeight: 800, color: '#7A5233' }}>{formatCurrency(Math.round(parseFloat(newPrivateForm.totalAmount) * 30) / 100)}</p>
                               </div>
                             </motion.div>
                           )}
@@ -552,32 +628,35 @@ export default function OwnerDashboard() {
 
                       {/* Special Requests */}
                       <div>
-                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-3">Additional Details</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Additional Details</p>
                         <div>
-                          <label className="text-sm font-medium text-gray-700">Special Requests</label>
+                          <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Special Requests</label>
                           <textarea
                             rows={3}
                             placeholder="Any special requirements, dietary needs, accessibility needs..."
                             value={newPrivateForm.specialRequests}
                             onChange={(e) => setNewPrivateForm((p) => ({ ...p, specialRequests: e.target.value }))}
-                            className="mt-1.5 block w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all resize-none"
+                            className="pwa-input"
+                            style={{ height: 'auto', resize: 'none', paddingTop: 10, paddingBottom: 10 }}
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Modal footer */}
-                    <div className="flex gap-3 px-6 pb-6 pt-2">
+                    <div style={{ display: 'flex', gap: 12, padding: '8px 24px 24px' }}>
                       <button
                         onClick={() => setShowNewPrivate(false)}
-                        className="flex-1 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                        className="pwa-btn pwa-btn-secondary"
+                        style={{ flex: 1 }}
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleCreatePrivate}
                         disabled={createPrivateMutation.isPending}
-                        className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold shadow-sm disabled:opacity-50 transition-all hover:shadow-md"
+                        className="pwa-btn pwa-btn-primary"
+                        style={{ flex: 1, background: '#8B5E3C' }}
                       >
                         {createPrivateMutation.isPending ? 'Creating...' : 'Create Booking'}
                       </button>
@@ -588,32 +667,31 @@ export default function OwnerDashboard() {
 
               {/* Loading */}
               {privateLoading && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <div className="w-8 h-8 border-3 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
-                  <p className="text-sm text-gray-400">Loading safaris...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: 12 }}>
+                  <div style={{ width: 32, height: 32, border: '3px solid #E8E5DE', borderTopColor: '#8B5E3C', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <p style={{ fontSize: 13, color: '#8A8A8A' }}>Loading safaris...</p>
                 </div>
               )}
 
               {/* Empty state */}
               {!privateLoading && privateSafaris?.length === 0 && (
                 <motion.div {...fadeIn}>
-                  <Card>
-                    <CardContent className="py-16 text-center">
-                      <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Globe className="w-8 h-8 text-amber-400" />
-                      </div>
-                      <p className="font-semibold text-gray-800 text-base">No Private Safaris Yet</p>
-                      <p className="text-gray-400 text-sm mt-1.5 max-w-xs mx-auto">
-                        When customers contact you via WhatsApp, phone, or email — create their booking here.
-                      </p>
-                      <button
-                        onClick={() => setShowNewPrivate(true)}
-                        className="mt-5 inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all"
-                      >
-                        + Create First Booking
-                      </button>
-                    </CardContent>
-                  </Card>
+                  <div className="pwa-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+                    <div style={{ width: 64, height: 64, background: '#FAEFD9', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <Globe style={{ width: 32, height: 32, color: '#8B5E3C' }} />
+                    </div>
+                    <p style={{ fontWeight: 700, color: '#1A1A1A', fontSize: 16, marginBottom: 8 }}>No Private Safaris Yet</p>
+                    <p style={{ color: '#8A8A8A', fontSize: 13, maxWidth: 280, margin: '0 auto 20px' }}>
+                      When customers contact you via WhatsApp, phone, or email — create their booking here.
+                    </p>
+                    <button
+                      onClick={() => setShowNewPrivate(true)}
+                      className="pwa-btn pwa-btn-primary"
+                      style={{ background: '#8B5E3C' }}
+                    >
+                      + Create First Booking
+                    </button>
+                  </div>
                 </motion.div>
               )}
 
@@ -623,211 +701,240 @@ export default function OwnerDashboard() {
                 const displayName = safari.customerName || customer?.name;
                 const displayPhone = safari.customerPhone || customer?.phone;
                 const displayEmail = safari.customerEmail || customer?.email;
-                const statusClass = STATUS_COLORS[safari.status] || 'bg-gray-50 text-gray-700 border-gray-200';
+                const badgeClass = STATUS_PWA_BADGE[safari.status] || 'pwa-badge pwa-badge-gray';
                 const next = nextStatus[safari.status];
                 return (
                   <motion.div key={safari.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                    <Card className="hover:shadow-lg transition-all duration-200 border border-gray-100">
-                      <CardContent className="p-5">
-                        {/* Card header */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                              {safari.safariType === 'Full Day' ? <Sun className="w-5 h-5 text-amber-600" /> : safari.safariType === 'Half Day Morning' ? <Sunrise className="w-5 h-5 text-amber-600" /> : <Sunset className="w-5 h-5 text-amber-600" />}
-                            </div>
-                            <div>
-                              <p className="font-bold text-gray-900">{safari.safariType}</p>
-                              <p className="text-sm text-gray-500">{formatShortDate(safari.safariDate)}</p>
-                              {safari.location && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" />{safari.location.name}</p>}
-                            </div>
+                    <div className="pwa-card" style={{ padding: 16 }}>
+                      {/* Card header */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ width: 40, height: 40, background: '#FAEFD9', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {safari.safariType === 'Full Day'
+                              ? <Sun style={{ width: 20, height: 20, color: '#8B5E3C' }} />
+                              : safari.safariType === 'Half Day Morning'
+                              ? <Sunrise style={{ width: 20, height: 20, color: '#8B5E3C' }} />
+                              : <Sunset style={{ width: 20, height: 20, color: '#8B5E3C' }} />}
                           </div>
-                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusClass}`}>
-                            {safari.status.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-
-                        {/* Customer info */}
-                        {(displayName || displayPhone || displayEmail) && (
-                          <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-1.5">
-                            {displayName && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                <span className="font-medium text-gray-800">{displayName}</span>
-                              </div>
-                            )}
-                            {displayPhone && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                <span className="text-gray-600">{displayPhone}</span>
-                              </div>
-                            )}
-                            {displayEmail && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                <span className="text-gray-600">{displayEmail}</span>
-                              </div>
-                            )}
-                            {safari.specialRequests && (
-                              <div className="flex items-start gap-2 text-sm pt-1 border-t border-gray-200 mt-1">
-                                <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-                                <span className="text-gray-500 italic text-xs">{safari.specialRequests}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Stats row — 2 cols */}
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          <div className="bg-gray-50 rounded-xl p-3 text-center">
-                            <p className="text-xs text-gray-400 mb-0.5">Guests</p>
-                            <p className="font-bold text-gray-900 text-lg">{safari.numberOfGuests}</p>
-                          </div>
-                          <div className="bg-green-50 rounded-xl p-3 text-center">
-                            <p className="text-xs text-gray-400 mb-0.5">Total Package</p>
-                            <p className="font-bold text-green-700 text-base">{formatCurrency(Math.round(parseFloat(safari.totalAmount)))}</p>
-                          </div>
-                        </div>
-
-                        {/* Deposit panel */}
-                        <div className={`rounded-xl border mb-3 overflow-hidden ${
-                          safari.depositPaid
-                            ? 'border-emerald-200 bg-emerald-50'
-                            : safari.status === 'DEPOSIT_PENDING'
-                            ? 'border-amber-300 bg-amber-50'
-                            : 'border-gray-200 bg-gray-50'
-                        }`}>
-                          <div className="flex items-center justify-between px-4 py-3">
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">30% Deposit</p>
-                              <p className={`font-bold text-lg mt-0.5 ${safari.depositPaid ? 'text-emerald-700' : 'text-gray-900'}`}>
-                                {formatCurrency(Math.round(parseFloat(safari.depositAmount)))}
+                          <div>
+                            <p style={{ fontWeight: 700, color: '#1A1A1A', marginBottom: 2 }}>{safari.safariType}</p>
+                            <p style={{ fontSize: 13, color: '#8A8A8A' }}>{formatShortDate(safari.safariDate)}</p>
+                            {safari.location && (
+                              <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <MapPin style={{ width: 12, height: 12 }} />{safari.location.name}
                               </p>
-                            </div>
-                            <span className={`text-xs font-semibold px-2.5 py-1.5 rounded-full flex items-center gap-1.5 ${
-                              safari.depositPaid
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : safari.status === 'DEPOSIT_PENDING'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}>
-                              {safari.depositPaid
-                                ? <><CheckCircle2 className="w-3 h-3" />Received</>
-                                : safari.status === 'DEPOSIT_PENDING'
-                                ? <><Clock className="w-3 h-3" />Awaiting Payment</>
-                                : 'Not Yet Requested'}
-                            </span>
+                            )}
                           </div>
+                        </div>
+                        <span className={badgeClass} style={{ whiteSpace: 'nowrap' }}>
+                          {safari.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
 
-                          {safari.status === 'DEPOSIT_PENDING' && !safari.depositPaid && (
-                            <div className="border-t border-amber-200 bg-white px-4 py-3 space-y-2">
-                              {displayPhone && (
-                                <a
-                                  href={`https://wa.me/${displayPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                    `Hi ${displayName || 'there'}, your ${safari.safariType} safari on ${formatShortDate(safari.safariDate)} is confirmed. Please pay the 30% deposit of ${formatCurrency(Math.round(parseFloat(safari.depositAmount)))} to secure your booking. Thank you!`
-                                  )}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-semibold transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                                  Send Deposit Request via WhatsApp
-                                </a>
-                              )}
-                              <button
-                                onClick={() => statusMutation.mutate({ id: safari.id, status: 'DEPOSIT_PAID' })}
-                                disabled={statusMutation.isPending}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold transition-colors shadow-sm"
-                              >
-                                <CheckCircle2 className="w-4 h-4" /> Mark Deposit Received
-                              </button>
+                      {/* Customer info */}
+                      {(displayName || displayPhone || displayEmail) && (
+                        <div style={{ background: '#FAFAF7', borderRadius: 10, padding: 12, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {displayName && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                              <User style={{ width: 14, height: 14, color: '#8A8A8A', flexShrink: 0 }} />
+                              <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{displayName}</span>
+                            </div>
+                          )}
+                          {displayPhone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                              <Phone style={{ width: 14, height: 14, color: '#8A8A8A', flexShrink: 0 }} />
+                              <span style={{ color: '#555' }}>{displayPhone}</span>
+                            </div>
+                          )}
+                          {displayEmail && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                              <Mail style={{ width: 14, height: 14, color: '#8A8A8A', flexShrink: 0 }} />
+                              <span style={{ color: '#555' }}>{displayEmail}</span>
+                            </div>
+                          )}
+                          {safari.specialRequests && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, paddingTop: 8, borderTop: '1px solid #E8E5DE', marginTop: 2 }}>
+                              <FileText style={{ width: 14, height: 14, color: '#8A8A8A', flexShrink: 0, marginTop: 1 }} />
+                              <span style={{ color: '#8A8A8A', fontStyle: 'italic' }}>{safari.specialRequests}</span>
                             </div>
                           )}
                         </div>
+                      )}
 
-                        {/* Assigned vendors summary */}
-                        {(safari.jeepAssignment || safari.guideAssignment || safari.mealOrders?.length > 0) && (
-                          <div className="border border-gray-200 rounded-xl p-3 mb-3 space-y-1.5">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Assigned Vendors</p>
-                            {safari.jeepAssignment && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600 flex items-center gap-1.5"><Car className="w-3.5 h-3.5" /> Jeep — {safari.jeepAssignment.vendor?.user?.name} ({safari.jeepAssignment.jeepNumber})</span>
-                                <span className="font-medium">{formatCurrency(parseFloat(safari.jeepAssignment.rentalFee))}</span>
-                              </div>
+                      {/* Stats row — 2 cols */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                        <div style={{ background: '#FAFAF7', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                          <p style={{ fontSize: 12, color: '#8A8A8A', marginBottom: 2 }}>Guests</p>
+                          <p style={{ fontWeight: 800, color: '#1A1A1A', fontSize: 20 }}>{safari.numberOfGuests}</p>
+                        </div>
+                        <div style={{ background: '#E3EFE9', borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                          <p style={{ fontSize: 12, color: '#8A8A8A', marginBottom: 2 }}>Total Package</p>
+                          <p style={{ fontWeight: 800, color: '#2D6A4F', fontSize: 15 }}>{formatCurrency(Math.round(parseFloat(safari.totalAmount)))}</p>
+                        </div>
+                      </div>
+
+                      {/* Deposit panel */}
+                      <div style={{
+                        borderRadius: 12,
+                        border: safari.depositPaid
+                          ? '1px solid #C6DDD1'
+                          : safari.status === 'DEPOSIT_PENDING'
+                          ? '1px solid #F4E1C1'
+                          : '1px solid #E8E5DE',
+                        background: safari.depositPaid
+                          ? '#E3EFE9'
+                          : safari.status === 'DEPOSIT_PENDING'
+                          ? '#FAEFD9'
+                          : '#FAFAF7',
+                        marginBottom: 10,
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+                          <div>
+                            <p style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>30% Deposit</p>
+                            <p style={{ fontWeight: 800, fontSize: 18, marginTop: 2, color: safari.depositPaid ? '#2D6A4F' : '#1A1A1A' }}>
+                              {formatCurrency(Math.round(parseFloat(safari.depositAmount)))}
+                            </p>
+                          </div>
+                          <span style={{
+                            fontSize: 12, fontWeight: 600, padding: '6px 10px', borderRadius: 8,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            background: safari.depositPaid ? '#C6DDD1' : safari.status === 'DEPOSIT_PENDING' ? '#F4E1C1' : '#E8E5DE',
+                            color: safari.depositPaid ? '#1F4F3A' : safari.status === 'DEPOSIT_PENDING' ? '#8B5E3C' : '#8A8A8A',
+                          }}>
+                            {safari.depositPaid
+                              ? <><CheckCircle2 style={{ width: 12, height: 12 }} />Received</>
+                              : safari.status === 'DEPOSIT_PENDING'
+                              ? <><Clock style={{ width: 12, height: 12 }} />Awaiting Payment</>
+                              : 'Not Yet Requested'}
+                          </span>
+                        </div>
+
+                        {safari.status === 'DEPOSIT_PENDING' && !safari.depositPaid && (
+                          <div style={{ borderTop: '1px solid #F4E1C1', background: '#fff', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {displayPhone && (
+                              <a
+                                href={`https://wa.me/${displayPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                  `Hi ${displayName || 'there'}, your ${safari.safariType} safari on ${formatShortDate(safari.safariDate)} is confirmed. Please pay the 30% deposit of ${formatCurrency(Math.round(parseFloat(safari.depositAmount)))} to secure your booking. Thank you!`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                  width: '100%', padding: '10px 0', borderRadius: 10,
+                                  background: '#25D366', color: '#fff', fontSize: 13,
+                                  fontWeight: 600, textDecoration: 'none', transition: 'background 0.15s',
+                                }}
+                              >
+                                <svg style={{ width: 16, height: 16 }} fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                Send Deposit Request via WhatsApp
+                              </a>
                             )}
-                            {safari.guideAssignment && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600 flex items-center gap-1.5"><Compass className="w-3.5 h-3.5" /> Guide — {safari.guideAssignment.vendor?.user?.name}</span>
-                                <span className="font-medium">{formatCurrency(parseFloat(safari.guideAssignment.guideFee))}</span>
-                              </div>
-                            )}
-                            {safari.mealOrders?.map((m: any) => (
-                              <div key={m.id} className="flex justify-between text-sm">
-                                <span className="text-gray-600 flex items-center gap-1.5"><UtensilsCrossed className="w-3.5 h-3.5" /> Meals — {m.vendor?.user?.name}</span>
-                                <span className="font-medium">{formatCurrency(parseFloat(m.totalCost))}</span>
-                              </div>
-                            ))}
-                            {parseFloat(safari.vendorCosts) > 0 && (
-                              <div className="flex justify-between text-sm pt-1.5 border-t border-gray-200 mt-1">
-                                <span className="text-gray-500">Vendor costs</span>
-                                <span className="font-semibold text-red-600">− {formatCurrency(parseFloat(safari.vendorCosts))}</span>
-                              </div>
-                            )}
-                            {parseFloat(safari.vendorCosts) > 0 && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-700 font-medium">Net profit</span>
-                                <span className="font-bold text-green-700">{formatCurrency(parseFloat(safari.profit))}</span>
-                              </div>
-                            )}
+                            <button
+                              onClick={() => statusMutation.mutate({ id: safari.id, status: 'DEPOSIT_PAID' })}
+                              disabled={statusMutation.isPending}
+                              className="pwa-btn pwa-btn-primary"
+                              style={{ width: '100%' }}
+                            >
+                              <CheckCircle2 style={{ width: 16, height: 16 }} /> Mark Deposit Received
+                            </button>
                           </div>
                         )}
+                      </div>
 
-                        {/* Assign vendors button — available from DEPOSIT_PAID onward */}
-                        {['DEPOSIT_PAID', 'CONFIRMED', 'DEPOSIT_PENDING'].includes(safari.status) && (
-                          <button
-                            onClick={() => {
-                              setVendorAssignSafari(safari);
-                              setVendorTab('JEEP_PROVIDER');
-                              setVendorForm({
-                                jeepVendorId: safari.jeepAssignment?.vendorId || '',
-                                jeepNumber: safari.jeepAssignment?.jeepNumber || '',
-                                rentalFee: safari.jeepAssignment?.rentalFee?.toString() || '',
-                                guideVendorId: safari.guideAssignment?.vendorId || '',
-                                guideFee: safari.guideAssignment?.guideFee?.toString() || '',
-                                restaurantVendorId: safari.mealOrders?.[0]?.vendorId || '',
-                                mealCost: safari.mealOrders?.[0]?.totalCost?.toString() || '',
-                                numberOfMeals: safari.mealOrders?.[0]?.numberOfMeals?.toString() || '1',
-                                accommodationVendorId: safari.accommodationId || '',
-                                accommodationCost: '',
-                                cameraVendorId: '',
-                                cameraCost: '',
-                              });
-                            }}
-                            className="w-full mb-2 py-2 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold hover:bg-amber-50 transition-colors flex items-center justify-center gap-2"
-                          >
-                            <Tag className="w-3.5 h-3.5" /> {safari.jeepAssignment || safari.guideAssignment ? 'Edit Vendor Assignments' : 'Assign Vendors'}
-                          </button>
-                        )}
+                      {/* Assigned vendors summary */}
+                      {(safari.jeepAssignment || safari.guideAssignment || safari.mealOrders?.length > 0) && (
+                        <div style={{ border: '1px solid #E8E5DE', borderRadius: 12, padding: 12, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Assigned Vendors</p>
+                          {safari.jeepAssignment && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                              <span style={{ color: '#555', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Car style={{ width: 14, height: 14 }} /> Jeep — {safari.jeepAssignment.vendor?.user?.name} ({safari.jeepAssignment.jeepNumber})
+                              </span>
+                              <span style={{ fontWeight: 600 }}>{formatCurrency(parseFloat(safari.jeepAssignment.rentalFee))}</span>
+                            </div>
+                          )}
+                          {safari.guideAssignment && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                              <span style={{ color: '#555', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Compass style={{ width: 14, height: 14 }} /> Guide — {safari.guideAssignment.vendor?.user?.name}
+                              </span>
+                              <span style={{ fontWeight: 600 }}>{formatCurrency(parseFloat(safari.guideAssignment.guideFee))}</span>
+                            </div>
+                          )}
+                          {safari.mealOrders?.map((m: any) => (
+                            <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                              <span style={{ color: '#555', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <UtensilsCrossed style={{ width: 14, height: 14 }} /> Meals — {m.vendor?.user?.name}
+                              </span>
+                              <span style={{ fontWeight: 600 }}>{formatCurrency(parseFloat(m.totalCost))}</span>
+                            </div>
+                          ))}
+                          {parseFloat(safari.vendorCosts) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, paddingTop: 6, borderTop: '1px solid #E8E5DE', marginTop: 2 }}>
+                              <span style={{ color: '#8A8A8A' }}>Vendor costs</span>
+                              <span style={{ fontWeight: 600, color: '#C0392B' }}>− {formatCurrency(parseFloat(safari.vendorCosts))}</span>
+                            </div>
+                          )}
+                          {parseFloat(safari.vendorCosts) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                              <span style={{ color: '#555', fontWeight: 500 }}>Net profit</span>
+                              <span style={{ fontWeight: 700, color: '#2D6A4F' }}>{formatCurrency(parseFloat(safari.profit))}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                        {/* Action button — DEPOSIT_PAID handled inside deposit panel above */}
-                        {next && next !== 'DEPOSIT_PAID' && (
-                          <button
-                            onClick={() => statusMutation.mutate({ id: safari.id, status: next })}
-                            disabled={statusMutation.isPending}
-                            className={`w-full text-sm font-semibold py-2.5 rounded-xl transition-all hover:shadow-md disabled:opacity-50 text-white ${
-                              next === 'DEPOSIT_PENDING'
-                                ? 'bg-amber-500 hover:bg-amber-600'
-                                : next === 'CONFIRMED'
-                                ? 'bg-blue-600 hover:bg-blue-700'
-                                : 'bg-green-600 hover:bg-green-700'
-                            }`}
-                          >
-                            {next === 'DEPOSIT_PENDING' ? 'Request Deposit' :
-                             next === 'CONFIRMED'        ? 'Confirm Safari' :
-                             'Mark as Completed'}
-                          </button>
-                        )}
-                      </CardContent>
-                    </Card>
+                      {/* Assign vendors button — available from DEPOSIT_PAID onward */}
+                      {['DEPOSIT_PAID', 'CONFIRMED', 'DEPOSIT_PENDING'].includes(safari.status) && (
+                        <button
+                          onClick={() => {
+                            setVendorAssignSafari(safari);
+                            setVendorTab('JEEP_PROVIDER');
+                            setVendorForm({
+                              jeepVendorId: safari.jeepAssignment?.vendorId || '',
+                              jeepNumber: safari.jeepAssignment?.jeepNumber || '',
+                              rentalFee: safari.jeepAssignment?.rentalFee?.toString() || '',
+                              guideVendorId: safari.guideAssignment?.vendorId || '',
+                              guideFee: safari.guideAssignment?.guideFee?.toString() || '',
+                              restaurantVendorId: safari.mealOrders?.[0]?.vendorId || '',
+                              mealCost: safari.mealOrders?.[0]?.totalCost?.toString() || '',
+                              numberOfMeals: safari.mealOrders?.[0]?.numberOfMeals?.toString() || '1',
+                              accommodationVendorId: safari.accommodationId || '',
+                              accommodationCost: '',
+                              cameraVendorId: '',
+                              cameraCost: '',
+                            });
+                          }}
+                          className="pwa-btn pwa-btn-secondary"
+                          style={{ width: '100%', marginBottom: 8, borderColor: '#F4E1C1', color: '#8B5E3C' }}
+                        >
+                          <Tag style={{ width: 14, height: 14 }} />
+                          {safari.jeepAssignment || safari.guideAssignment ? 'Edit Vendor Assignments' : 'Assign Vendors'}
+                        </button>
+                      )}
+
+                      {/* Action button — DEPOSIT_PAID handled inside deposit panel above */}
+                      {next && next !== 'DEPOSIT_PAID' && (
+                        <button
+                          onClick={() => statusMutation.mutate({ id: safari.id, status: next })}
+                          disabled={statusMutation.isPending}
+                          className="pwa-btn pwa-btn-primary"
+                          style={{
+                            width: '100%',
+                            background: next === 'DEPOSIT_PENDING'
+                              ? '#8B5E3C'
+                              : next === 'CONFIRMED'
+                              ? '#2E6BB8'
+                              : '#2D6A4F',
+                          }}
+                        >
+                          {next === 'DEPOSIT_PENDING' ? 'Request Deposit' :
+                           next === 'CONFIRMED'        ? 'Confirm Safari' :
+                           'Mark as Completed'}
+                        </button>
+                      )}
+                    </div>
                   </motion.div>
                 );
               })}
@@ -838,23 +945,40 @@ export default function OwnerDashboard() {
           {vendorAssignSafari && (
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+              style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+              }}
               onClick={(e) => e.target === e.currentTarget && setVendorAssignSafari(null)}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                style={{
+                  background: '#fff', borderRadius: 16,
+                  boxShadow: '0 20px 48px rgba(0,0,0,0.18)',
+                  width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
+                }}
               >
-                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b">
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '20px 24px 16px', borderBottom: '1px solid #E8E5DE',
+                }}>
                   <div>
-                    <p className="font-bold text-gray-900">Assign Vendors</p>
-                    <p className="text-xs text-gray-400">{vendorAssignSafari.safariType} · {formatShortDate(vendorAssignSafari.safariDate)}</p>
+                    <p style={{ fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Assign Vendors</p>
+                    <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>{vendorAssignSafari.safariType} · {formatShortDate(vendorAssignSafari.safariDate)}</p>
                   </div>
-                  <button onClick={() => setVendorAssignSafari(null)} className="text-gray-400 hover:text-gray-600 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">×</button>
+                  <button
+                    onClick={() => setVendorAssignSafari(null)}
+                    style={{
+                      width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: '50%', border: 'none', background: 'transparent',
+                      color: '#8A8A8A', cursor: 'pointer', fontSize: 20,
+                    }}
+                  >×</button>
                 </div>
 
                 {/* Vendor type tabs */}
-                <div className="flex border-b overflow-x-auto">
+                <div style={{ display: 'flex', borderBottom: '1px solid #E8E5DE', overflowX: 'auto' }}>
                   {[
                     { key: 'JEEP_PROVIDER',  label: 'Jeep' },
                     { key: 'GUIDE',          label: 'Guide' },
@@ -865,27 +989,33 @@ export default function OwnerDashboard() {
                     <button
                       key={t.key}
                       onClick={() => setVendorTab(t.key)}
-                      className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
-                        vendorTab === t.key ? 'border-amber-500 text-amber-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-                      }`}
+                      style={{
+                        padding: '10px 16px', fontSize: 12, fontWeight: 500,
+                        whiteSpace: 'nowrap', border: 'none', background: 'transparent',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                        borderBottom: vendorTab === t.key ? '2px solid #2D6A4F' : '2px solid transparent',
+                        color: vendorTab === t.key ? '#2D6A4F' : '#8A8A8A',
+                        fontWeight: vendorTab === t.key ? 600 : 500,
+                        marginBottom: -1,
+                      }}
                     >
                       {t.label}
                     </button>
                   ))}
                 </div>
 
-                <div className="px-6 py-4 space-y-3">
+                <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Filter vendors by current tab type */}
                   {(() => {
                     const typeVendors = availableVendors.filter((v: any) => v.vendorType === vendorTab);
 
                     const VendorSelect = ({ fieldKey, label }: { fieldKey: string; label: string }) => (
                       <div>
-                        <label className="text-sm font-medium text-gray-700">{label}</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>{label}</label>
                         <select
                           value={(vendorForm as any)[fieldKey]}
                           onChange={(e) => setVendorForm((p) => ({ ...p, [fieldKey]: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                          className="pwa-input"
                         >
                           <option value="">Select vendor...</option>
                           {typeVendors.map((v: any) => (
@@ -895,21 +1025,22 @@ export default function OwnerDashboard() {
                           ))}
                         </select>
                         {typeVendors.length === 0 && (
-                          <p className="text-xs text-gray-400 mt-1">No available vendors for this date and location.</p>
+                          <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 4 }}>No available vendors for this date and location.</p>
                         )}
                       </div>
                     );
 
                     const CostInput = ({ fieldKey, label, placeholder = '0' }: { fieldKey: string; label: string; placeholder?: string }) => (
                       <div>
-                        <label className="text-sm font-medium text-gray-700">{label}</label>
-                        <div className="relative mt-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">LKR</span>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>{label}</label>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#8A8A8A', fontWeight: 600 }}>LKR</span>
                           <input
                             type="number" min="0" placeholder={placeholder}
                             value={(vendorForm as any)[fieldKey]}
                             onChange={(e) => setVendorForm((p) => ({ ...p, [fieldKey]: e.target.value }))}
-                            className="block w-full border border-gray-300 rounded-lg pl-12 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                            className="pwa-input"
+                            style={{ paddingLeft: 44 }}
                           />
                         </div>
                       </div>
@@ -919,12 +1050,12 @@ export default function OwnerDashboard() {
                       <>
                         <VendorSelect fieldKey="jeepVendorId" label="Jeep Provider" />
                         <div>
-                          <label className="text-sm font-medium text-gray-700">Jeep / Vehicle Number</label>
+                          <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Jeep / Vehicle Number</label>
                           <input
                             type="text" placeholder="e.g. WP-CAR-1234"
                             value={vendorForm.jeepNumber}
                             onChange={(e) => setVendorForm((p) => ({ ...p, jeepNumber: e.target.value }))}
-                            className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                            className="pwa-input"
                           />
                         </div>
                         <CostInput fieldKey="rentalFee" label="Rental Fee (LKR)" placeholder="15000" />
@@ -942,12 +1073,12 @@ export default function OwnerDashboard() {
                       <>
                         <VendorSelect fieldKey="restaurantVendorId" label="Restaurant / Meals" />
                         <div>
-                          <label className="text-sm font-medium text-gray-700">Number of Meals</label>
+                          <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Number of Meals</label>
                           <input
                             type="number" min="1"
                             value={vendorForm.numberOfMeals}
                             onChange={(e) => setVendorForm((p) => ({ ...p, numberOfMeals: e.target.value }))}
-                            className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                            className="pwa-input"
                           />
                         </div>
                         <CostInput fieldKey="mealCost" label="Total Meal Cost (LKR)" placeholder="5000" />
@@ -970,8 +1101,14 @@ export default function OwnerDashboard() {
                   })()}
                 </div>
 
-                <div className="flex gap-3 px-6 pb-6">
-                  <button onClick={() => setVendorAssignSafari(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                <div style={{ display: 'flex', gap: 12, padding: '0 24px 24px' }}>
+                  <button
+                    onClick={() => setVendorAssignSafari(null)}
+                    className="pwa-btn pwa-btn-secondary"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </button>
                   <button
                     onClick={() => {
                       const body: any = {};
@@ -983,7 +1120,8 @@ export default function OwnerDashboard() {
                       assignVendorMutation.mutate({ id: vendorAssignSafari.id, body });
                     }}
                     disabled={assignVendorMutation.isPending}
-                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                    className="pwa-btn pwa-btn-primary"
+                    style={{ flex: 1 }}
                   >
                     {assignVendorMutation.isPending ? 'Saving...' : 'Save Assignments'}
                   </button>
@@ -994,29 +1132,42 @@ export default function OwnerDashboard() {
 
           {/* ========== SHARED SAFARIS ========== */}
           {tab === 'shared' && has('SHARED_TRIPS') && (
-            <motion.div key="shared" {...fadeIn} className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Shared Safaris</h2>
+            <motion.div key="shared" {...fadeIn} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Shared Safaris</h2>
                 <button
                   onClick={() => setShowNewShared(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="pwa-btn pwa-btn-primary"
                 >
                   + New Safari
                 </button>
               </div>
+
               {/* New shared safari modal */}
               {showNewShared && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                  <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-lg font-bold mb-4">New Shared Safari</h3>
-                    <div className="space-y-3">
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+                    zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+                  }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    style={{
+                      background: '#fff', borderRadius: 16,
+                      boxShadow: '0 20px 48px rgba(0,0,0,0.18)',
+                      padding: 24, width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto',
+                    }}
+                  >
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', margin: '0 0 20px' }}>New Shared Safari</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Location *</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Location *</label>
                         <select
                           value={newSharedForm.locationId}
                           onChange={(e) => setNewSharedForm((p) => ({ ...p, locationId: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                          className="pwa-input"
                         >
                           <option value="">Select location...</option>
                           {ownerLocations.map((l) => (
@@ -1025,41 +1176,48 @@ export default function OwnerDashboard() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Safari Date *</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Safari Date *</label>
                         <input
                           type="date"
                           value={newSharedForm.safariDate}
                           onChange={(e) => setNewSharedForm((p) => ({ ...p, safariDate: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                          className="pwa-input"
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Safari Type *</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Safari Type *</label>
                         <select
                           value={newSharedForm.safariType}
                           onChange={(e) => setNewSharedForm((p) => ({ ...p, safariType: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                          className="pwa-input"
                         >
                           {['Full Day', 'Morning Half', 'Afternoon Half'].map((t) => <option key={t}>{t}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Price Per Seat (LKR) *</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>Price Per Seat (LKR) *</label>
                         <input
                           type="number"
                           placeholder="3500"
                           value={newSharedForm.pricePerSeat}
                           onChange={(e) => setNewSharedForm((p) => ({ ...p, pricePerSeat: e.target.value }))}
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none"
+                          className="pwa-input"
                         />
                       </div>
                     </div>
-                    <div className="flex gap-3 mt-5">
-                      <button onClick={() => setShowNewShared(false)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">Cancel</button>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                      <button
+                        onClick={() => setShowNewShared(false)}
+                        className="pwa-btn pwa-btn-secondary"
+                        style={{ flex: 1 }}
+                      >
+                        Cancel
+                      </button>
                       <button
                         onClick={handleCreateShared}
                         disabled={createSharedMutation.isPending}
-                        className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                        className="pwa-btn pwa-btn-primary"
+                        style={{ flex: 1 }}
                       >
                         {createSharedMutation.isPending ? 'Creating...' : 'Create Safari'}
                       </button>
@@ -1070,38 +1228,44 @@ export default function OwnerDashboard() {
 
               {jeepsData?.map((jeep: any, i: number) => (
                 <motion.div key={jeep.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-semibold">{jeep.safariType}</p>
-                          <p className="text-sm text-gray-500">{formatShortDate(jeep.safariDate)}</p>
-                        </div>
-                        <Badge variant={STATUS_BADGE[jeep.status] || 'secondary'}>{jeep.status}</Badge>
+                  <div className="pwa-card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div>
+                        <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>{jeep.safariType}</p>
+                        <p style={{ fontSize: 13, color: '#8A8A8A' }}>{formatShortDate(jeep.safariDate)}</p>
                       </div>
+                      <span className={STATUS_PWA_BADGE[jeep.status] || 'pwa-badge pwa-badge-gray'}>
+                        {jeep.status}
+                      </span>
+                    </div>
 
-                      {/* Seat progress */}
-                      <div className="flex gap-1 mb-2">
-                        {Array.from({ length: 6 }, (_, idx) => {
-                          const b = jeep.bookings?.find((bk: any) => bk.seatNumber === idx + 1);
-                          const col = !b ? 'bg-gray-200' : (b.status === 'PAID' || b.status === 'CONFIRMED') ? 'bg-green-500' : 'bg-amber-400';
-                          return <div key={idx} className={`h-4 flex-1 rounded ${col}`} title={b ? `Seat ${idx+1}: ${b.status}` : `Seat ${idx+1}: Available`} />;
-                        })}
+                    {/* Seat progress */}
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                      {Array.from({ length: 6 }, (_, idx) => {
+                        const b = jeep.bookings?.find((bk: any) => bk.seatNumber === idx + 1);
+                        const bg = !b ? '#E8E5DE' : (b.status === 'PAID' || b.status === 'CONFIRMED') ? '#2D6A4F' : '#8B5E3C';
+                        return (
+                          <div
+                            key={idx}
+                            style={{ height: 16, flex: 1, borderRadius: 4, background: bg }}
+                            title={b ? `Seat ${idx+1}: ${b.status}` : `Seat ${idx+1}: Available`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p style={{ fontSize: 12, color: '#8A8A8A' }}>{jeep.paidSeats}/{jeep.totalSeats} paid · {jeep.reservedSeats} reserved</p>
+
+                    {jeep.bookings?.length > 0 && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #E8E5DE', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        {jeep.bookings.map((b: any) => (
+                          <div key={b.id} style={{ fontSize: 12, background: '#FAFAF7', borderRadius: 8, padding: 8 }}>
+                            <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>Seat {b.seatNumber} — {b.customer?.user?.name || 'Guest'}</p>
+                            <p style={{ color: '#8A8A8A' }}>{b.status}</p>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-xs text-gray-500">{jeep.paidSeats}/{jeep.totalSeats} paid · {jeep.reservedSeats} reserved</p>
-
-                      {jeep.bookings?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-2">
-                          {jeep.bookings.map((b: any) => (
-                            <div key={b.id} className="text-xs bg-gray-50 rounded-lg p-2">
-                              <p className="font-medium">Seat {b.seatNumber} — {b.customer?.user?.name || 'Guest'}</p>
-                              <p className="text-gray-400">{b.status}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </motion.div>
@@ -1109,152 +1273,152 @@ export default function OwnerDashboard() {
 
           {/* ========== VENDOR PAYMENTS ========== */}
           {tab === 'vendors' && has('VENDOR_LISTINGS') && (
-            <motion.div key="vendors" {...fadeIn} className="space-y-4">
-              <h2 className="text-lg font-semibold">Vendor Payments</h2>
+            <motion.div key="vendors" {...fadeIn} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Vendor Payments</h2>
               {vendorPaymentsData?.length === 0 && (
-                <Card><CardContent className="p-8 text-center text-gray-400">No vendor payments found.</CardContent></Card>
+                <div className="pwa-card" style={{ padding: 32, textAlign: 'center', color: '#8A8A8A', fontSize: 14 }}>
+                  No vendor payments found.
+                </div>
               )}
               {vendorPaymentsData?.map((payment: any, i: number) => (
                 <motion.div key={payment.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{payment.vendor?.user?.name}</p>
-                        <p className="text-xs text-gray-500">{payment.description}</p>
-                        <p className="text-sm font-bold mt-1 text-green-700">{formatCurrency(parseFloat(payment.amount))}</p>
-                      </div>
-                      {payment.status === 'PENDING' ? (
-                        <button
-                          onClick={() => markPaidMutation.mutate(payment.id)}
-                          disabled={markPaidMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          Mark Paid
-                        </button>
-                      ) : (
-                        <Badge variant="success">PAID</Badge>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <div className="pwa-card" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: 14, color: '#1A1A1A', marginBottom: 2 }}>{payment.vendor?.user?.name}</p>
+                      <p style={{ fontSize: 12, color: '#8A8A8A', marginBottom: 4 }}>{payment.description}</p>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#2D6A4F' }}>{formatCurrency(parseFloat(payment.amount))}</p>
+                    </div>
+                    {payment.status === 'PENDING' ? (
+                      <button
+                        onClick={() => markPaidMutation.mutate(payment.id)}
+                        disabled={markPaidMutation.isPending}
+                        className="pwa-btn pwa-btn-primary pwa-btn-sm"
+                      >
+                        Mark Paid
+                      </button>
+                    ) : (
+                      <span className="pwa-badge pwa-badge-green">PAID</span>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </motion.div>
           )}
+
           {/* ========== SETTINGS ========== */}
           {tab === 'settings' && (
-            <motion.div key="settings" {...fadeIn} className="space-y-6">
+            <motion.div key="settings" {...fadeIn} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Portal link card */}
-              <Card>
-                <CardContent className="p-6">
-                  <h2 className="font-semibold text-gray-900 mb-1">Customer Booking Portal</h2>
-                  <p className="text-sm text-gray-500 mb-4">Share this link with your customers so they can book seats directly.</p>
-                  {pricingLoading ? (
-                    <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
-                  ) : pricingData?.portalUrl ? (
-                    <div className="flex gap-2 items-center">
-                      <input
-                        readOnly
-                        value={pricingData.portalUrl}
-                        className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700 font-mono"
-                      />
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(pricingData.portalUrl);
-                          setCopySuccess(true);
-                          setTimeout(() => setCopySuccess(false), 2000);
-                        }}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-                      >
-                        {copySuccess ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-amber-600">Save your pricing below to activate the portal link.</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-3">
-                    The link filters to your safaris only. Customers can pick a date, type, and seat without logging in.
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="pwa-card" style={{ padding: 20 }}>
+                <h2 style={{ fontWeight: 700, color: '#1A1A1A', marginBottom: 4, fontSize: 15 }}>Customer Booking Portal</h2>
+                <p style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 16 }}>Share this link with your customers so they can book seats directly.</p>
+                {pricingLoading ? (
+                  <div style={{ height: 44, background: '#F1EEE7', borderRadius: 10, animation: 'pulse 1.5s infinite' }} />
+                ) : pricingData?.portalUrl ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      readOnly
+                      value={pricingData.portalUrl}
+                      className="pwa-input"
+                      style={{ fontFamily: 'monospace', fontSize: 13, color: '#555', flex: 1 }}
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(pricingData.portalUrl);
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2000);
+                      }}
+                      className="pwa-btn pwa-btn-primary"
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      {copySuccess ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 13, color: '#8B5E3C' }}>Save your pricing below to activate the portal link.</p>
+                )}
+                <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 12 }}>
+                  The link filters to your safaris only. Customers can pick a date, type, and seat without logging in.
+                </p>
+              </div>
 
               {/* Pricing form */}
-              <Card>
-                <CardContent className="p-6">
-                  <h2 className="font-semibold text-gray-900 mb-1">Safari Pricing</h2>
-                  <p className="text-sm text-gray-500 mb-5">
-                    Set your prices once. The system will auto-create jeep slots for the next 30 days at these prices.
-                  </p>
+              <div className="pwa-card" style={{ padding: 20 }}>
+                <h2 style={{ fontWeight: 700, color: '#1A1A1A', marginBottom: 4, fontSize: 15 }}>Safari Pricing</h2>
+                <p style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 20 }}>
+                  Set your prices once. The system will auto-create jeep slots for the next 30 days at these prices.
+                </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Full Day Price (LKR) <span className="text-gray-400">6:00 AM – 6:00 PM</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={pricingForm.priceFullDay}
-                        onChange={(e) => setPricingForm((p) => ({ ...p, priceFullDay: e.target.value }))}
-                        placeholder="e.g. 15000"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Half Day Morning Price (LKR) <span className="text-gray-400">6:00 AM – 12:00 PM</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={pricingForm.priceHalfDayMorning}
-                        onChange={(e) => setPricingForm((p) => ({ ...p, priceHalfDayMorning: e.target.value }))}
-                        placeholder="e.g. 9000"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Half Day Afternoon Price (LKR) <span className="text-gray-400">12:00 PM – 6:00 PM</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={pricingForm.priceHalfDayAfternoon}
-                        onChange={(e) => setPricingForm((p) => ({ ...p, priceHalfDayAfternoon: e.target.value }))}
-                        placeholder="e.g. 9000"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Meal Add-on Price (LKR) <span className="text-gray-400">per person, optional</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={pricingForm.mealPrice}
-                        onChange={(e) => setPricingForm((p) => ({ ...p, mealPrice: e.target.value }))}
-                        placeholder="e.g. 500 (leave blank to disable)"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
+                      Full Day Price (LKR) <span style={{ color: '#8A8A8A', fontWeight: 400 }}>6:00 AM – 6:00 PM</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={pricingForm.priceFullDay}
+                      onChange={(e) => setPricingForm((p) => ({ ...p, priceFullDay: e.target.value }))}
+                      placeholder="e.g. 15000"
+                      className="pwa-input"
+                    />
                   </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
+                      Half Day Morning (LKR) <span style={{ color: '#8A8A8A', fontWeight: 400 }}>6:00 AM – 12:00 PM</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={pricingForm.priceHalfDayMorning}
+                      onChange={(e) => setPricingForm((p) => ({ ...p, priceHalfDayMorning: e.target.value }))}
+                      placeholder="e.g. 9000"
+                      className="pwa-input"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
+                      Half Day Afternoon (LKR) <span style={{ color: '#8A8A8A', fontWeight: 400 }}>12:00 PM – 6:00 PM</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={pricingForm.priceHalfDayAfternoon}
+                      onChange={(e) => setPricingForm((p) => ({ ...p, priceHalfDayAfternoon: e.target.value }))}
+                      placeholder="e.g. 9000"
+                      className="pwa-input"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
+                      Meal Add-on (LKR) <span style={{ color: '#8A8A8A', fontWeight: 400 }}>per person, optional</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={pricingForm.mealPrice}
+                      onChange={(e) => setPricingForm((p) => ({ ...p, mealPrice: e.target.value }))}
+                      placeholder="e.g. 500 (leave blank to disable)"
+                      className="pwa-input"
+                    />
+                  </div>
+                </div>
 
-                  {scheduleMsg && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0" /> {scheduleMsg}
-                    </div>
-                  )}
+                {scheduleMsg && (
+                  <div className="pwa-notice pwa-notice-green" style={{ marginBottom: 16 }}>
+                    <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13 }}>{scheduleMsg}</span>
+                  </div>
+                )}
 
-                  <button
-                    onClick={() => savePricingMutation.mutate(pricingForm)}
-                    disabled={savePricingMutation.isPending}
-                    className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm"
-                  >
-                    {savePricingMutation.isPending ? 'Saving...' : 'Save & Auto-Schedule Jeeps'}
-                  </button>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Existing jeep slots are never modified. Only missing days are created.
-                  </p>
-                </CardContent>
-              </Card>
+                <button
+                  onClick={() => savePricingMutation.mutate(pricingForm)}
+                  disabled={savePricingMutation.isPending}
+                  className="pwa-btn pwa-btn-primary"
+                >
+                  {savePricingMutation.isPending ? 'Saving...' : 'Save & Auto-Schedule Jeeps'}
+                </button>
+                <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 8 }}>
+                  Existing jeep slots are never modified. Only missing days are created.
+                </p>
+              </div>
             </motion.div>
           )}
 

@@ -113,3 +113,188 @@
 }
 .input-safari:focus, .safari-input:focus { border-color: #2D6A4F; background: #fff; }
 .input-safari::placeholder, .safari-input::placeholder { color: #8A8A8A; }
+
+/* ===== Safari Adventures PWA Design System ===== */
+:root {
+  --safari-green: #2D6A4F;
+  --safari-green-dark: #1F4F3A;
+  --safari-green-light: #E3EFE9;
+  --safari-brown: #8B5E3C;
+  --safari-brown-light: #F1E4D5;
+  --safari-sand: #F4E1C1;
+  --safari-sand-soft: #FAEFD9;
+  --safari-bg: #FAFAF7;
+  --safari-surface: #FFFFFF;
+  --safari-text: #1A1A1A;
+  --safari-text-2: #555555;
+  --safari-text-3: #8A8A8A;
+  --safari-border: #E8E5DE;
+  --safari-border-soft: #F1EEE7;
+  --safari-warning: #D97706;
+  --safari-danger: #C0392B;
+  --safari-info: #2E6BB8;
+  --safari-shadow: 0 6px 18px rgba(28,38,32,0.06), 0 1px 2px rgba(20,20,20,0.04);
+  --safari-shadow-lg: 0 16px 40px rgba(28,38,32,0.12), 0 2px 6px rgba(20,20,20,0.05);
+}
+
+/* Layout */
+body { background: #FAFAF7; }
+
+/* Cards */
+.pwa-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #E8E5DE;
+  box-shadow: 0 6px 18px rgba(28,38,32,0.06), 0 1px 2px rgba(20,20,20,0.04);
+}
+.pwa-card-pad { padding: 16px; }
+
+/* Buttons */
+.pwa-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-weight: 600; font-size: 13.5px; border-radius: 14px; padding: 11px 18px;
+  border: none; cursor: pointer; transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap; font-family: inherit;
+}
+.pwa-btn-primary { background: #2D6A4F; color: #fff; }
+.pwa-btn-primary:hover { background: #1F4F3A; }
+.pwa-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+.pwa-btn-secondary { background: #fff; color: #1A1A1A; border: 1.5px solid #E8E5DE; }
+.pwa-btn-secondary:hover { background: #FAFAF7; }
+.pwa-btn-ghost { background: transparent; color: #555; }
+.pwa-btn-ghost:hover { background: rgba(0,0,0,0.04); }
+.pwa-btn-brown { background: #8B5E3C; color: #fff; }
+.pwa-btn-brown:hover { background: #7A5233; }
+.pwa-btn-lg { padding: 14px 22px; font-size: 15px; border-radius: 16px; }
+.pwa-btn-block { width: 100%; }
+.pwa-btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 10px; }
+
+/* Inputs */
+.pwa-input {
+  width: 100%; height: 44px; border-radius: 10px;
+  border: 1.5px solid #E8E5DE; background: #FAFAF7;
+  padding: 0 14px; font-size: 14px; color: #1A1A1A; outline: none;
+  transition: border-color 0.15s, background 0.15s; font-family: inherit;
+}
+.pwa-input:focus { border-color: #2D6A4F; background: #fff; box-shadow: 0 0 0 3px rgba(45,106,79,0.08); }
+.pwa-input::placeholder { color: #8A8A8A; }
+.safari-input { width: 100%; height: 44px; border-radius: 10px; border: 1.5px solid #E8E5DE; background: #FAFAF7; padding: 0 14px; font-size: 14px; color: #1A1A1A; outline: none; transition: border-color 0.15s, background 0.15s; font-family: inherit; }
+.safari-input:focus { border-color: #2D6A4F; background: #fff; }
+.safari-input::placeholder { color: #8A8A8A; }
+
+/* Badges */
+.pwa-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+}
+.pwa-badge-green { background: #E3EFE9; color: #1F4F3A; }
+.pwa-badge-amber { background: #FEF3C7; color: #92400E; }
+.pwa-badge-red { background: #FEE2E2; color: #991B1B; }
+.pwa-badge-blue { background: #DBEAFE; color: #1E40AF; }
+.pwa-badge-gray { background: #F3F4F6; color: #6B7280; }
+.pwa-badge-brown { background: #F1E4D5; color: #7A5233; }
+
+/* Stat card (PWA style) */
+.pwa-stat-card {
+  background: #fff; border-radius: 14px; border: 1px solid #E8E5DE;
+  box-shadow: 0 6px 18px rgba(28,38,32,0.06), 0 1px 2px rgba(20,20,20,0.04);
+  padding: 14px 16px;
+}
+.pwa-stat-ico {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
+}
+.pwa-stat-label { font-size: 11.5px; color: #8A8A8A; font-weight: 500; margin-bottom: 4px; }
+.pwa-stat-value { font-size: 22px; font-weight: 800; color: #1A1A1A; letter-spacing: -0.02em; line-height: 1; }
+.pwa-stat-trend { font-size: 11px; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 3px; }
+.pwa-stat-trend.up { color: #2D6A4F; }
+.pwa-stat-trend.down { color: #D97706; }
+
+/* Section header */
+.pwa-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 18px 0 10px;
+}
+.pwa-section-head h2 { font-size: 14px; font-weight: 700; color: #1A1A1A; margin: 0; }
+.pwa-section-head a, .pwa-section-head button { font-size: 12.5px; color: #2D6A4F; font-weight: 600; background: none; border: none; cursor: pointer; }
+
+/* Occupancy bar */
+.pwa-occ-bar { height: 6px; background: #F1EEE7; border-radius: 3px; overflow: visible; position: relative; margin-bottom: 6px; }
+.pwa-occ-bar .fill { position: absolute; inset: 0; display: flex; border-radius: 3px; overflow: hidden; }
+.pwa-occ-bar .paid { background: #2D6A4F; height: 100%; border-radius: 3px; transition: width 0.4s; }
+.pwa-occ-bar .reserved { background: #8B5E3C; opacity: 0.5; height: 100%; }
+.pwa-occ-bar .min-mark { position: absolute; width: 2px; background: #1A1A1A; border-radius: 1px; }
+
+/* Row / stack utilities */
+.pwa-row { display: flex; align-items: center; }
+.pwa-row-between { display: flex; align-items: center; justify-content: space-between; }
+.pwa-stack { display: flex; flex-direction: column; }
+
+/* Pipeline badge */
+.pipeline-pill {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px 8px; border-radius: 10px; flex: 1; min-width: 0;
+}
+.pipeline-pill .count { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.pipeline-pill .label { font-size: 10px; font-weight: 600; text-align: center; margin-top: 2px; }
+
+/* Sidebar PWA style */
+.pwa-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 20px 18px 16px; border-bottom: 1px solid #E8E5DE; }
+.pwa-sidebar-brand .mark { width: 34px; height: 34px; background: #2D6A4F; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.pwa-sidebar-brand .name { font-size: 15px; font-weight: 800; color: #1A1A1A; letter-spacing: -0.01em; }
+.pwa-sidebar-brand .sub { font-size: 11px; color: #8A8A8A; }
+.pwa-nav-btn { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 500; color: #555; background: none; border: none; cursor: pointer; transition: background 0.12s, color 0.12s; text-align: left; }
+.pwa-nav-btn:hover { background: #F1EEE7; color: #1A1A1A; }
+.pwa-nav-btn.active { background: #E3EFE9; color: #2D6A4F; font-weight: 600; }
+.pwa-nav-btn.danger { color: #C0392B; }
+.pwa-nav-btn.danger:hover { background: #FEE2E2; }
+.pwa-nav-btn .ico { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pwa-nav-btn.active .ico { background: #2D6A4F; }
+
+/* Bottom nav */
+.pwa-bottom-nav { display: flex; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-top: 1px solid #E8E5DE; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0); }
+.pwa-bottom-nav .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 4px 8px; gap: 3px; border: none; background: none; cursor: pointer; color: #8A8A8A; font-size: 10.5px; font-weight: 500; transition: color 0.12s; }
+.pwa-bottom-nav .tab.active { color: #2D6A4F; }
+.pwa-bottom-nav .tab svg { width: 22px; height: 22px; }
+
+/* Top bar */
+.pwa-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border-bottom: 1px solid #E8E5DE; position: sticky; top: 0; z-index: 30; }
+.pwa-top-bar h1 { font-size: 17px; font-weight: 700; color: #1A1A1A; margin: 0; letter-spacing: -0.01em; }
+.pwa-top-bar .sub { font-size: 11.5px; color: #8A8A8A; }
+.pwa-avatar { width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, #2D6A4F, #1F4F3A); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.pwa-bell { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #FAFAF7; border: 1px solid #E8E5DE; cursor: pointer; color: #555; position: relative; }
+
+/* Tabs */
+.pwa-tabs { display: flex; gap: 4px; padding: 4px; background: #F1EEE7; border-radius: 12px; margin-bottom: 14px; }
+.pwa-tabs button { flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #8A8A8A; background: none; border: none; cursor: pointer; transition: all 0.15s; }
+.pwa-tabs button.active { background: #fff; color: #2D6A4F; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+/* App body (scrollable content area) */
+.pwa-body { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+.pwa-page { padding: 0 16px; }
+
+/* Status badges matching PWA */
+.status-OPEN { background: #E3EFE9; color: #1F4F3A; }
+.status-CONFIRMED { background: #E3EFE9; color: #1F4F3A; }
+.status-PENDING_PAYMENT { background: #FEF3C7; color: #92400E; }
+.status-CANCELLED { background: #FEE2E2; color: #991B1B; }
+.status-COMPLETED { background: #F3F4F6; color: #6B7280; }
+.status-PAID { background: #E3EFE9; color: #1F4F3A; }
+.status-RESERVED { background: #DBEAFE; color: #1E40AF; }
+.status-RELEASED { background: #F3F4F6; color: #6B7280; }
+.status-AUTO_CANCELLED { background: #FEE2E2; color: #991B1B; }
+.status-PENDING { background: #FEF3C7; color: #92400E; }
+.status-ACCEPTED { background: #E3EFE9; color: #1F4F3A; }
+.status-DECLINED { background: #FEE2E2; color: #991B1B; }
+.status-ACTIVE { background: #E3EFE9; color: #1F4F3A; }
+.status-EXPIRED { background: #FEE2E2; color: #991B1B; }
+
+/* Alert/notice boxes */
+.pwa-notice { border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; }
+.pwa-notice-amber { background: #FAEFD9; border: 1px solid #F4E1C1; color: #8B5E3C; }
+.pwa-notice-green { background: #E3EFE9; border: 1px solid #C6DDD1; color: #1F4F3A; }
+.pwa-notice-red { background: #FEE2E2; border: 1px solid #FECACA; color: #991B1B; }
+.pwa-notice-blue { background: #DBEAFE; border: 1px solid #BFDBFE; color: #1E40AF; }
+
+/* Number formatting */
+.tnum { font-variant-numeric: tabular-nums; }

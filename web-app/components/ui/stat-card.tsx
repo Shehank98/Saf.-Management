@@ -1,45 +1,32 @@
-import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   label: string;
   value: string | number;
-  icon: LucideIcon;
+  icon: any;
   iconColor?: string;
   iconBg?: string;
   sub?: string;
   highlight?: boolean;
   className?: string;
+  trend?: string;
+  trendDir?: 'up' | 'down';
 }
 
 export function StatCard({
-  label,
-  value,
-  icon: Icon,
-  iconColor = 'text-primary',
-  iconBg = 'bg-primary/10',
-  sub,
-  highlight,
-  className,
+  label, value, icon: Icon, iconColor = '#2D6A4F', iconBg = '#E3EFE9',
+  sub, highlight, className, trend, trendDir = 'up',
 }: StatCardProps) {
   return (
-    <div
-      className={cn(
-        'rounded-xl border border-border bg-white p-5 shadow-card',
-        highlight && 'border-primary/20 bg-primary/5',
-        className
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold text-foreground">{value}</p>
-          {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
-        </div>
-        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', iconBg)}>
-          <Icon className={cn('h-5 w-5', iconColor)} />
-        </div>
+    <div className={cn('pwa-stat-card', className)} style={highlight ? { borderColor: '#C6DDD1', background: '#E3EFE9' } : {}}>
+      <div className="pwa-stat-ico" style={{ background: iconBg }}>
+        <Icon size={16} color={iconColor} strokeWidth={2} />
       </div>
+      <div className="pwa-stat-label">{label}</div>
+      <div className="pwa-stat-value tnum">{value}</div>
+      {(trend || sub) && (
+        <div className={cn('pwa-stat-trend', trendDir)}>{trend || sub}</div>
+      )}
     </div>
   );
 }

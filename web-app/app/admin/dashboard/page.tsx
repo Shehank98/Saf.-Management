@@ -8,7 +8,6 @@ import {
 } from 'recharts';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BillingTab } from '@/components/admin/BillingTab';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { NavItem } from '@/components/layout/Sidebar';
@@ -200,13 +199,13 @@ export default function AdminDashboard() {
   const stats = statsData;
   const sharedPieData = analyticsData?.sharedByStatus?.map((s: any) => ({ name: s.status, value: s._count })) || [];
 
-  const statusBadge = (status: string) => {
+  const statusBadge = (status: string): string => {
     const map: Record<string, string> = {
-      PENDING:  'bg-amber-100 text-amber-700',
-      APPROVED: 'bg-green-100 text-green-700',
-      REJECTED: 'bg-red-100 text-red-700',
+      PENDING:  'pwa-badge pwa-badge-amber',
+      APPROVED: 'pwa-badge pwa-badge-green',
+      REJECTED: 'pwa-badge pwa-badge-red',
     };
-    return `text-xs px-2 py-0.5 rounded-full font-medium ${map[status] || 'bg-gray-100 text-gray-700'}`;
+    return map[status] || 'pwa-badge';
   };
 
   const handleAdminTabChange = (key: string) => {
@@ -226,10 +225,10 @@ export default function AdminDashboard() {
       userRole="SUPER_ADMIN"
       onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
     >
-      <div className="max-w-5xl mx-auto">
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* ── OVERVIEW ── */}
         {activeTab === 'Overview' && stats && (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard label="Active Owners" value={`${stats.owners.active} / ${stats.owners.total}`} icon={Globe} iconBg="bg-green-100" iconColor="text-green-600" />
               <StatCard label="Active Vendors" value={`${stats.vendors.active} / ${stats.vendors.total}`} icon={Store} iconBg="bg-blue-100" iconColor="text-blue-600" />
@@ -238,9 +237,11 @@ export default function AdminDashboard() {
             </div>
             {sharedPieData.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Shared Safaris by Status</CardTitle></CardHeader>
-                  <CardContent>
+                <div className="pwa-card">
+                  <div style={{ padding: '16px 16px 0' }}>
+                    <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>Shared Safaris by Status</h2>
+                  </div>
+                  <div style={{ padding: 16 }}>
                     <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
                         <Pie data={sharedPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
@@ -250,11 +251,13 @@ export default function AdminDashboard() {
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Safari Overview</CardTitle></CardHeader>
-                  <CardContent>
+                  </div>
+                </div>
+                <div className="pwa-card">
+                  <div style={{ padding: '16px 16px 0' }}>
+                    <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>Safari Overview</h2>
+                  </div>
+                  <div style={{ padding: 16 }}>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={[
                         { name: 'Shared', count: stats.safaris.shared },
@@ -266,8 +269,8 @@ export default function AdminDashboard() {
                         <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -275,50 +278,50 @@ export default function AdminDashboard() {
 
         {/* ── USERS ── */}
         {activeTab === 'Users' && (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Pending approvals */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <div className="pwa-card">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   Pending Approvals
                   {pendingUsers?.length > 0 && (
-                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{pendingUsers.length}</span>
+                    <span style={{ background: '#ef4444', color: '#fff', fontSize: 11, borderRadius: 999, padding: '1px 8px' }}>{pendingUsers.length}</span>
                   )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h2>
+              </div>
+              <div style={{ padding: 16 }}>
                 {pendingLoading ? (
-                  <p className="text-gray-400 text-sm py-4 text-center">Loading...</p>
+                  <p style={{ color: '#6B6B6B', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Loading...</p>
                 ) : pendingUsers?.length === 0 ? (
-                  <p className="text-gray-400 text-sm py-4 text-center">No pending approvals</p>
+                  <p style={{ color: '#6B6B6B', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No pending approvals</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {pendingUsers?.map((u: any) => (
-                      <div key={u.id} className="border rounded-xl p-4 bg-amber-50">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-semibold text-gray-900">{u.name}</p>
-                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{u.role}</span>
+                      <div key={u.id} style={{ border: '1px solid #E8E5DE', borderRadius: 12, padding: 16, background: '#FFFBF0' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                              <p style={{ fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{u.name}</p>
+                              <span style={{ fontSize: 11, background: '#E8E5DE', color: '#6B6B6B', borderRadius: 999, padding: '1px 8px' }}>{u.role}</span>
                             </div>
-                            <p className="text-sm text-gray-500">{u.email}</p>
+                            <p style={{ fontSize: 13, color: '#6B6B6B', margin: 0 }}>{u.email}</p>
                             {u.vendor && (
-                              <p className="text-xs text-gray-400 mt-1">
+                              <p style={{ fontSize: 11, color: '#9B9B9B', marginTop: 4 }}>
                                 {u.vendor.businessName} · {u.vendor.vendorType?.replace('_', ' ')}
                                 {u.vendor.businessAddress && ` · ${u.vendor.businessAddress}`}
                               </p>
                             )}
                             {u.safariOwner && (
-                              <p className="text-xs text-gray-400 mt-1">
+                              <p style={{ fontSize: 11, color: '#9B9B9B', marginTop: 4 }}>
                                 {u.safariOwner.companyName} · {u.safariOwner.companyAddress}
                               </p>
                             )}
                           </div>
-                          <div className="flex gap-2 shrink-0">
+                          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                             <button
                               onClick={() => approveMutation.mutate(u.id)}
                               disabled={approveMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                              className="pwa-btn pwa-btn-primary pwa-btn-sm"
                             >
                               Approve
                             </button>
@@ -328,42 +331,47 @@ export default function AdminDashboard() {
                                 rejectMutation.mutate({ userId: u.id, note });
                               }}
                               disabled={rejectMutation.isPending}
-                              className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                              className="pwa-btn pwa-btn-sm"
+                              style={{ background: '#fee2e2', color: '#b91c1c' }}
                             >
                               Reject
                             </button>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-400 mt-2">
+                        <p style={{ fontSize: 11, color: '#9B9B9B', marginTop: 8 }}>
                           Registered {new Date(u.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* All users */}
-            <Card>
-              <CardHeader><CardTitle>All Users</CardTitle></CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b">
-                      <th className="text-left py-2 text-gray-500 font-medium">Name</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Role</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Business</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Status</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Features</th>
-                    </tr></thead>
+            <div className="pwa-card">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>All Users</h2>
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #E8E5DE' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Name</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Role</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Business</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Status</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Features</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {allUsers?.map((u: any) => (
-                        <tr key={u.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3">
-                            <p className="font-medium">{u.name}</p>
+                        <tr key={u.id} style={{ borderBottom: '1px solid #E8E5DE' }}>
+                          <td style={{ padding: '12px 0' }}>
+                            <p style={{ fontWeight: 500, margin: 0 }}>{u.name}</p>
                             {editEmailUserId === u.id ? (
-                              <div className="flex items-center gap-1 mt-1">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                 <input
                                   value={editEmailValue}
                                   onChange={(e) => setEditEmailValue(e.target.value)}
@@ -371,19 +379,21 @@ export default function AdminDashboard() {
                                     if (e.key === 'Enter') changeEmailMutation.mutate({ userId: u.id, email: editEmailValue });
                                     if (e.key === 'Escape') setEditEmailUserId(null);
                                   }}
-                                  className="text-xs border border-blue-300 rounded px-2 py-0.5 w-40 outline-none focus:ring-1 focus:ring-blue-400"
+                                  className="pwa-input"
+                                  style={{ fontSize: 11, padding: '2px 8px', width: 160 }}
                                   autoFocus
                                 />
                                 <button
                                   onClick={() => changeEmailMutation.mutate({ userId: u.id, email: editEmailValue })}
                                   disabled={changeEmailMutation.isPending}
-                                  className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded disabled:opacity-50"
+                                  className="pwa-btn pwa-btn-primary pwa-btn-sm"
+                                  style={{ fontSize: 11, padding: '2px 8px' }}
                                 >
                                   Save
                                 </button>
                                 <button
                                   onClick={() => setEditEmailUserId(null)}
-                                  className="text-xs text-gray-400 hover:text-gray-600 px-1"
+                                  style={{ fontSize: 11, color: '#6B6B6B', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}
                                 >
                                   ×
                                 </button>
@@ -391,21 +401,21 @@ export default function AdminDashboard() {
                             ) : (
                               <button
                                 onClick={() => { setEditEmailUserId(u.id); setEditEmailValue(u.email); }}
-                                className="text-xs text-gray-400 hover:text-blue-600 hover:underline mt-0.5 text-left"
+                                style={{ fontSize: 11, color: '#6B6B6B', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 2 }}
                                 title="Click to change email"
                               >
                                 {u.email}
                               </button>
                             )}
                           </td>
-                          <td className="py-3 text-gray-500 text-xs">{u.role}</td>
-                          <td className="py-3 text-gray-500 text-xs">
+                          <td style={{ padding: '12px 0', color: '#6B6B6B', fontSize: 11 }}>{u.role}</td>
+                          <td style={{ padding: '12px 0', color: '#6B6B6B', fontSize: 11 }}>
                             {u.vendor?.businessName || u.safariOwner?.companyName || '—'}
                           </td>
-                          <td className="py-3">
+                          <td style={{ padding: '12px 0' }}>
                             <span className={statusBadge(u.approvalStatus)}>{u.approvalStatus}</span>
                           </td>
-                          <td className="py-3 text-xs text-gray-400">
+                          <td style={{ padding: '12px 0', fontSize: 11, color: '#9B9B9B' }}>
                             {u.features?.filter((f: any) => f.enabled).length || 0} enabled
                           </td>
                         </tr>
@@ -413,8 +423,8 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
@@ -422,81 +432,123 @@ export default function AdminDashboard() {
         {activeTab === 'Features' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* User selector */}
-            <Card className="md:col-span-1">
-              <CardHeader><CardTitle className="text-base">Select User</CardTitle></CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y max-h-[500px] overflow-y-auto">
+            <div className="pwa-card md:col-span-1">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>Select User</h2>
+              </div>
+              <div style={{ padding: 0 }}>
+                <div style={{ maxHeight: 500, overflowY: 'auto' }}>
                   {allUsers?.filter((u: any) => u.approvalStatus === 'APPROVED').map((u: any) => (
                     <button
                       key={u.id}
                       onClick={() => setSelectedUserId(u.id)}
-                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                        selectedUserId === u.id ? 'bg-green-50 border-l-2 border-green-600' : ''
-                      }`}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '12px 16px',
+                        background: selectedUserId === u.id ? '#E3EFE9' : 'transparent',
+                        borderLeft: selectedUserId === u.id ? '3px solid #2D6A4F' : '3px solid transparent',
+                        border: 'none',
+                        borderBottom: '1px solid #E8E5DE',
+                        cursor: 'pointer',
+                        display: 'block',
+                      }}
                     >
-                      <p className="font-medium text-sm text-gray-900">{u.name}</p>
-                      <p className="text-xs text-gray-400">{u.role} · {u.vendor?.businessName || u.safariOwner?.companyName}</p>
-                      <p className="text-xs text-green-600 mt-0.5">
+                      <p style={{ fontWeight: 500, fontSize: 13, color: '#1A1A1A', margin: 0 }}>{u.name}</p>
+                      <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 0' }}>{u.role} · {u.vendor?.businessName || u.safariOwner?.companyName}</p>
+                      <p style={{ fontSize: 11, color: '#2D6A4F', margin: '2px 0 0' }}>
                         {u.features?.filter((f: any) => f.enabled).length || 0} features active
                       </p>
                     </button>
                   ))}
                   {allUsers?.filter((u: any) => u.approvalStatus === 'APPROVED').length === 0 && (
-                    <p className="text-gray-400 text-sm p-4 text-center">No approved users yet</p>
+                    <p style={{ color: '#6B6B6B', fontSize: 13, textAlign: 'center', padding: 16 }}>No approved users yet</p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Feature toggles */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base">
+            <div className="pwa-card md:col-span-2">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>
                   {selectedUser ? `Features for ${selectedUser.name}` : 'Select a user to manage features'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h2>
+              </div>
+              <div style={{ padding: 16 }}>
                 {!selectedUser ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <MousePointerClick className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">Select an approved user from the left</p>
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: '#9B9B9B' }}>
+                    <MousePointerClick style={{ width: 32, height: 32, margin: '0 auto 8px', color: '#D1D5DB', display: 'block' }} />
+                    <p style={{ fontSize: 13, margin: 0 }}>Select an approved user from the left</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {ALL_FEATURES.filter((f) => f.roles.includes(selectedUser.role)).map((feat) => {
                       const userFeat = selectedUser.features?.find((f: any) => f.feature === feat.key);
                       const isEnabled = userFeat?.enabled || false;
                       return (
-                        <div key={feat.key} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-colors ${
-                          isEnabled ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-gray-50'
-                        }`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
-                              <feat.icon className={`w-4.5 h-4.5 ${isEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                        <div
+                          key={feat.key}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: 16,
+                            borderRadius: 12,
+                            border: isEnabled ? '2px solid #C6DDD1' : '2px solid #E8E5DE',
+                            background: isEnabled ? '#E3EFE9' : '#FAFAF7',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 8,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: isEnabled ? '#C6DDD1' : '#E8E5DE',
+                            }}>
+                              <feat.icon style={{ width: 18, height: 18, color: isEnabled ? '#2D6A4F' : '#9B9B9B' }} />
                             </div>
                             <div>
-                              <p className="font-medium text-sm text-gray-900">{feat.label}</p>
-                              <p className="text-xs text-gray-400">For {feat.roles.join(', ').replace(/_/g, ' ')}</p>
+                              <p style={{ fontWeight: 500, fontSize: 13, color: '#1A1A1A', margin: 0 }}>{feat.label}</p>
+                              <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 0' }}>For {feat.roles.join(', ').replace(/_/g, ' ')}</p>
                             </div>
                           </div>
                           <button
                             onClick={() => toggleFeature(selectedUser.id, feat.key, isEnabled)}
                             disabled={featureMutation.isPending}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
-                              isEnabled ? 'bg-green-600' : 'bg-gray-300'
-                            }`}
+                            style={{
+                              position: 'relative',
+                              display: 'inline-flex',
+                              height: 24,
+                              width: 44,
+                              alignItems: 'center',
+                              borderRadius: 9999,
+                              background: isEnabled ? '#2D6A4F' : '#D1D5DB',
+                              border: 'none',
+                              cursor: featureMutation.isPending ? 'not-allowed' : 'pointer',
+                              opacity: featureMutation.isPending ? 0.5 : 1,
+                              transition: 'background 0.2s',
+                              padding: 0,
+                              flexShrink: 0,
+                            }}
                           >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              isEnabled ? 'translate-x-6' : 'translate-x-1'
-                            }`} />
+                            <span style={{
+                              display: 'inline-block',
+                              height: 16,
+                              width: 16,
+                              borderRadius: 9999,
+                              background: '#fff',
+                              transform: isEnabled ? 'translateX(24px)' : 'translateX(4px)',
+                              transition: 'transform 0.2s',
+                            }} />
                           </button>
                         </div>
                       );
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
@@ -504,23 +556,27 @@ export default function AdminDashboard() {
 
         {/* ── LOCATIONS ── */}
         {activeTab === 'Locations' && (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Create new location */}
-            <Card>
-              <CardHeader><CardTitle className="text-base">Add New Location</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex gap-3 flex-wrap">
+            <div className="pwa-card">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>Add New Location</h2>
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <input
                     value={newLocName}
                     onChange={(e) => setNewLocName(e.target.value)}
                     placeholder="Location name (e.g. Yala National Park)"
-                    className="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="pwa-input"
+                    style={{ flex: 1, minWidth: 200 }}
                   />
                   <input
                     value={newLocDesc}
                     onChange={(e) => setNewLocDesc(e.target.value)}
                     placeholder="Description (optional)"
-                    className="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="pwa-input"
+                    style={{ flex: 1, minWidth: 200 }}
                   />
                   <button
                     onClick={() => {
@@ -528,78 +584,90 @@ export default function AdminDashboard() {
                       createLocMutation.mutate({ name: newLocName.trim(), description: newLocDesc.trim() || undefined });
                     }}
                     disabled={createLocMutation.isPending || !newLocName.trim()}
-                    className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
+                    className="pwa-btn pwa-btn-primary"
                   >
                     {createLocMutation.isPending ? 'Adding...' : '+ Add Location'}
                   </button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Locations list */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
+            <div className="pwa-card">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   All Locations
                   {locationsData && (
-                    <span className="text-sm font-normal text-gray-400">
+                    <span style={{ fontSize: 13, fontWeight: 400, color: '#9B9B9B' }}>
                       ({locationsData.filter((l: any) => l.isActive).length} active)
                     </span>
                   )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h2>
+              </div>
+              <div style={{ padding: 16 }}>
                 {locLoading ? (
-                  <p className="text-gray-400 text-sm py-4 text-center">Loading...</p>
+                  <p style={{ color: '#6B6B6B', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Loading...</p>
                 ) : !locationsData?.length ? (
-                  <p className="text-gray-400 text-sm py-4 text-center">No locations yet. Add one above.</p>
+                  <p style={{ color: '#6B6B6B', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No locations yet. Add one above.</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {locationsData.map((loc: any) => (
                       <div
                         key={loc.id}
-                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
-                          loc.isActive ? 'border-green-100 bg-green-50' : 'border-gray-100 bg-gray-50 opacity-60'
-                        }`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 16,
+                          padding: 16,
+                          borderRadius: 12,
+                          border: loc.isActive ? '2px solid #C6DDD1' : '2px solid #E8E5DE',
+                          background: loc.isActive ? '#E3EFE9' : '#FAFAF7',
+                          opacity: loc.isActive ? 1 : 0.7,
+                          transition: 'all 0.2s',
+                        }}
                       >
-                        <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-                        <div className="flex-1 min-w-0">
+                        <MapPin style={{ width: 16, height: 16, color: '#6B6B6B', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           {editLocId === loc.id ? (
-                            <div className="flex items-center gap-2">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <input
                                 value={editLocName}
                                 onChange={(e) => setEditLocName(e.target.value)}
-                                className="border rounded px-2 py-1 text-sm flex-1"
+                                className="pwa-input"
+                                style={{ flex: 1, fontSize: 13, padding: '4px 8px' }}
                                 autoFocus
                               />
                               <button
                                 onClick={() => updateLocMutation.mutate({ id: loc.id, name: editLocName })}
                                 disabled={updateLocMutation.isPending}
-                                className="text-xs bg-green-600 text-white px-3 py-1 rounded"
+                                className="pwa-btn pwa-btn-primary pwa-btn-sm"
                               >
                                 Save
                               </button>
-                              <button onClick={() => setEditLocId(null)} className="text-xs text-gray-400 px-2">
+                              <button
+                                onClick={() => setEditLocId(null)}
+                                className="pwa-btn pwa-btn-secondary pwa-btn-sm"
+                              >
                                 Cancel
                               </button>
                             </div>
                           ) : (
                             <div>
-                              <p className="font-semibold text-sm text-gray-900">{loc.name}</p>
+                              <p style={{ fontWeight: 600, fontSize: 13, color: '#1A1A1A', margin: 0 }}>{loc.name}</p>
                               {loc.description && (
-                                <p className="text-xs text-gray-400 mt-0.5">{loc.description}</p>
+                                <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 0' }}>{loc.description}</p>
                               )}
-                              <p className="text-xs text-gray-400 mt-0.5">
+                              <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 0' }}>
                                 {loc._count?.owners || 0} owners · {loc._count?.vendors || 0} vendors
                               </p>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                           {editLocId !== loc.id && (
                             <button
                               onClick={() => { setEditLocId(loc.id); setEditLocName(loc.name); }}
-                              className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded"
+                              className="pwa-btn pwa-btn-secondary pwa-btn-sm"
                             >
                               Edit
                             </button>
@@ -607,11 +675,11 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => toggleLocMutation.mutate({ id: loc.id, isActive: !loc.isActive })}
                             disabled={toggleLocMutation.isPending}
-                            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                              loc.isActive
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200'
-                            }`}
+                            className="pwa-btn pwa-btn-sm"
+                            style={loc.isActive
+                              ? { background: '#fee2e2', color: '#b91c1c' }
+                              : { background: '#E3EFE9', color: '#2D6A4F' }
+                            }
                           >
                             {loc.isActive ? 'Deactivate' : 'Activate'}
                           </button>
@@ -620,39 +688,42 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Owner location assignments */}
-            <Card>
-              <CardHeader><CardTitle className="text-base">Owner Operating Locations</CardTitle></CardHeader>
-              <CardContent>
+            <div className="pwa-card">
+              <div style={{ padding: '16px 16px 0' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>Owner Operating Locations</h2>
+              </div>
+              <div style={{ padding: 16 }}>
                 {!ownersData?.length ? (
-                  <p className="text-gray-400 text-sm py-4 text-center">No approved owners yet.</p>
+                  <p style={{ color: '#6B6B6B', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No approved owners yet.</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {ownersData.map((owner: any) => {
                       const assigned = owner.locations.map((l: any) => l.location.id) as string[];
                       return (
-                        <div key={owner.id} className="border rounded-xl p-4">
-                          <p className="font-semibold text-sm text-gray-900 mb-1">{owner.user?.name}</p>
-                          <p className="text-xs text-gray-400 mb-3">{owner.companyName}</p>
-                          <div className="flex flex-wrap gap-2 mb-3">
+                        <div key={owner.id} style={{ border: '1px solid #E8E5DE', borderRadius: 12, padding: 16 }}>
+                          <p style={{ fontWeight: 600, fontSize: 13, color: '#1A1A1A', margin: 0 }}>{owner.user?.name}</p>
+                          <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 12px' }}>{owner.companyName}</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                             {owner.locations.length === 0 && (
-                              <span className="text-xs text-red-500 italic">No locations assigned</span>
+                              <span style={{ fontSize: 11, color: '#ef4444', fontStyle: 'italic' }}>No locations assigned</span>
                             )}
                             {owner.locations.map((l: any) => (
                               <span
                                 key={l.location.id}
-                                className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full"
+                                className="pwa-badge pwa-badge-green"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                               >
-                                <MapPin className="w-3 h-3" /> {l.location.name}
+                                <MapPin style={{ width: 10, height: 10 }} /> {l.location.name}
                                 <button
                                   onClick={() => ownerLocationMutation.mutate({
                                     userId: owner.user.id,
                                     locationIds: assigned.filter((id) => id !== l.location.id),
                                   })}
-                                  className="ml-1 text-green-600 hover:text-red-600 font-bold leading-none"
+                                  style={{ marginLeft: 4, color: '#2D6A4F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, lineHeight: 1, padding: 0 }}
                                   title="Remove"
                                 >
                                   ×
@@ -660,7 +731,7 @@ export default function AdminDashboard() {
                               </span>
                             ))}
                           </div>
-                          <div className="flex gap-2">
+                          <div style={{ display: 'flex', gap: 8 }}>
                             <select
                               defaultValue=""
                               onChange={(e) => {
@@ -672,7 +743,8 @@ export default function AdminDashboard() {
                                 });
                                 e.target.value = '';
                               }}
-                              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                              className="pwa-input"
+                              style={{ flex: 1 }}
                             >
                               <option value="">+ Add a location...</option>
                               {locationsData?.filter((l: any) => l.isActive && !assigned.includes(l.id)).map((l: any) => (
@@ -685,59 +757,75 @@ export default function AdminDashboard() {
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ── VENDORS ── */}
         {activeTab === 'Vendors' && (
-          <Card>
-            <CardHeader><CardTitle>All Vendors</CardTitle></CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-gray-100">
+          <div className="pwa-card">
+            <div style={{ padding: '16px 16px 0' }}>
+              <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>All Vendors</h2>
+            </div>
+            <div style={{ padding: 0 }}>
+              <div>
                 {vendorsData?.map((v: any) => {
                   const isExpanded = expandedVendorId === v.user.id;
                   const assigned = (v.locations ?? []).map((l: any) => l.location.id) as string[];
                   return (
-                    <div key={v.id}>
+                    <div key={v.id} style={{ borderBottom: '1px solid #E8E5DE' }}>
                       <button
                         onClick={() => setExpandedVendorId(isExpanded ? null : v.user.id)}
-                        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 text-left transition-colors"
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '16px 20px',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
                       >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 text-sm">{v.businessName}</p>
-                            <p className="text-xs text-gray-400 truncate">{v.user.email} · {v.vendorType?.replace(/_/g, ' ')}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontWeight: 500, color: '#1A1A1A', fontSize: 13, margin: 0 }}>{v.businessName}</p>
+                            <p style={{ fontSize: 11, color: '#9B9B9B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '2px 0 0' }}>{v.user.email} · {v.vendorType?.replace(/_/g, ' ')}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            v.subscriptionStatus === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                            v.subscriptionStatus === 'EXPIRED' ? 'bg-red-100 text-red-700' :
-                            'bg-orange-100 text-orange-700'
-                          }`}>{v.subscriptionStatus}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          <span className={
+                            v.subscriptionStatus === 'ACTIVE' ? 'pwa-badge pwa-badge-green' :
+                            v.subscriptionStatus === 'EXPIRED' ? 'pwa-badge pwa-badge-red' :
+                            'pwa-badge pwa-badge-amber'
+                          }>{v.subscriptionStatus}</span>
                           <span className={statusBadge(v.user.approvalStatus)}>{v.user.approvalStatus}</span>
-                          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                          {isExpanded ? <ChevronUp style={{ width: 16, height: 16, color: '#6B6B6B' }} /> : <ChevronDown style={{ width: 16, height: 16, color: '#6B6B6B' }} />}
                         </div>
                       </button>
 
                       {isExpanded && (
-                        <div className="px-5 pb-4 bg-gray-50 border-t border-gray-100">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">Operating Locations</p>
-                          <div className="flex flex-wrap gap-2 mb-3">
+                        <div style={{ padding: '0 20px 16px', background: '#FAFAF7', borderTop: '1px solid #E8E5DE' }}>
+                          <p style={{ fontSize: 11, fontWeight: 600, color: '#6B6B6B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '12px 0 8px' }}>Operating Locations</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                             {assigned.length === 0 && (
-                              <span className="text-xs text-red-500 italic">No locations assigned</span>
+                              <span style={{ fontSize: 11, color: '#ef4444', fontStyle: 'italic' }}>No locations assigned</span>
                             )}
                             {(v.locations ?? []).map((l: any) => (
-                              <span key={l.location.id} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                                <MapPin className="w-3 h-3" /> {l.location.name}
+                              <span
+                                key={l.location.id}
+                                className="pwa-badge pwa-badge-green"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              >
+                                <MapPin style={{ width: 10, height: 10 }} /> {l.location.name}
                                 <button
                                   onClick={() => vendorLocationMutation.mutate({
                                     userId: v.user.id,
                                     locationIds: assigned.filter((id) => id !== l.location.id),
                                   })}
-                                  className="ml-1 text-blue-600 hover:text-red-600 font-bold leading-none"
+                                  style={{ marginLeft: 4, color: '#2D6A4F', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, lineHeight: 1, padding: 0 }}
                                   title="Remove"
                                 >×</button>
                               </span>
@@ -750,7 +838,7 @@ export default function AdminDashboard() {
                               vendorLocationMutation.mutate({ userId: v.user.id, locationIds: [...assigned, e.target.value] });
                               e.target.value = '';
                             }}
-                            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="pwa-input"
                           >
                             <option value="">+ Add a location…</option>
                             {locationsData?.filter((l: any) => l.isActive && !assigned.includes(l.id)).map((l: any) => (
@@ -763,20 +851,21 @@ export default function AdminDashboard() {
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* ── BOOKINGS ── */}
         {activeTab === 'Bookings' && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Bookings</CardTitle>
+          <div className="pwa-card">
+            <div style={{ padding: '16px 16px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h2 style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: 0 }}>Bookings</h2>
                 <select
                   value={bookingStatusFilter}
                   onChange={(e) => setBookingStatusFilter(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                  className="pwa-input"
+                  style={{ width: 'auto' }}
                 >
                   <option value="PAYMENT_PENDING">Payment Pending</option>
                   <option value="PAID">Paid</option>
@@ -784,47 +873,49 @@ export default function AdminDashboard() {
                   <option value="RELEASED">Released</option>
                 </select>
               </div>
-            </CardHeader>
-            <CardContent>
-              {bookingsLoading && <p className="text-sm text-gray-400 text-center py-6">Loading…</p>}
+            </div>
+            <div style={{ padding: 16 }}>
+              {bookingsLoading && <p style={{ fontSize: 13, color: '#6B6B6B', textAlign: 'center', padding: '24px 0' }}>Loading…</p>}
               {!bookingsLoading && (!bookingsData || bookingsData.length === 0) && (
-                <p className="text-sm text-gray-400 text-center py-6">No bookings found.</p>
+                <p style={{ fontSize: 13, color: '#6B6B6B', textAlign: 'center', padding: '24px 0' }}>No bookings found.</p>
               )}
               {bookingsData && bookingsData.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b">
-                      <th className="text-left py-2 text-gray-500 font-medium">Customer</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Safari</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Seat</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Amount</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Status</th>
-                      <th className="text-left py-2 text-gray-500 font-medium">Action</th>
-                    </tr></thead>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #E8E5DE' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Customer</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Safari</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Seat</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Amount</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Status</th>
+                        <th style={{ textAlign: 'left', padding: '8px 0', color: '#6B6B6B', fontWeight: 600, fontSize: 12 }}>Action</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {bookingsData.map((b: any) => (
-                        <tr key={b.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3">
-                            <p className="font-medium">{b.customer?.user?.name}</p>
-                            <p className="text-xs text-gray-400">{b.customer?.user?.phone}</p>
+                        <tr key={b.id} style={{ borderBottom: '1px solid #E8E5DE' }}>
+                          <td style={{ padding: '12px 0' }}>
+                            <p style={{ fontWeight: 500, margin: 0 }}>{b.customer?.user?.name}</p>
+                            <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 0' }}>{b.customer?.user?.phone}</p>
                           </td>
-                          <td className="py-3">
-                            <p className="font-medium">{b.jeep?.safariType}</p>
-                            <p className="text-xs text-gray-400">
+                          <td style={{ padding: '12px 0' }}>
+                            <p style={{ fontWeight: 500, margin: 0 }}>{b.jeep?.safariType}</p>
+                            <p style={{ fontSize: 11, color: '#9B9B9B', margin: '2px 0 0' }}>
                               {b.jeep?.safariDate ? new Date(b.jeep.safariDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                             </p>
                           </td>
-                          <td className="py-3 text-gray-700">#{b.seatNumber}</td>
-                          <td className="py-3 font-medium">LKR {parseFloat(b.totalAmount).toLocaleString()}</td>
-                          <td className="py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              b.status === 'PAID' ? 'bg-green-100 text-green-700' :
-                              b.status === 'PAYMENT_PENDING' ? 'bg-amber-100 text-amber-700' :
-                              b.status === 'REFUNDED' ? 'bg-purple-100 text-purple-700' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>{b.status}</span>
+                          <td style={{ padding: '12px 0', color: '#1A1A1A' }}>#{b.seatNumber}</td>
+                          <td style={{ padding: '12px 0', fontWeight: 500 }}>LKR {parseFloat(b.totalAmount).toLocaleString()}</td>
+                          <td style={{ padding: '12px 0' }}>
+                            <span className={
+                              b.status === 'PAID' ? 'pwa-badge pwa-badge-green' :
+                              b.status === 'PAYMENT_PENDING' ? 'pwa-badge pwa-badge-amber' :
+                              b.status === 'REFUNDED' ? 'pwa-badge pwa-badge-red' :
+                              'pwa-badge'
+                            }>{b.status}</span>
                           </td>
-                          <td className="py-3">
+                          <td style={{ padding: '12px 0' }}>
                             {b.status === 'PAID' && (
                               <button
                                 onClick={() => {
@@ -832,7 +923,8 @@ export default function AdminDashboard() {
                                   refundMutation.mutate(b.id);
                                 }}
                                 disabled={refundMutation.isPending}
-                                className="text-xs px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+                                className="pwa-btn pwa-btn-sm"
+                                style={{ background: '#fee2e2', color: '#b91c1c' }}
                               >
                                 Refund
                               </button>
@@ -844,8 +936,8 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </DashboardShell>

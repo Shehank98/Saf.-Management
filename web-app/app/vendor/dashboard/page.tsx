@@ -3,8 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert } from '@/components/ui/alert';
 import { StatCard } from '@/components/ui/stat-card';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { NavItem } from '@/components/layout/Sidebar';
@@ -47,9 +45,10 @@ const VENDOR_NAV_ITEMS: NavItem[] = [
 ];
 
 const JOB_STATUS_BADGE: Record<string, string> = {
-  PENDING:  'bg-amber-100 text-amber-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  DECLINED: 'bg-red-100 text-red-700',
+  PENDING:   'pwa-badge pwa-badge-amber',
+  ACCEPTED:  'pwa-badge pwa-badge-green',
+  DECLINED:  'pwa-badge pwa-badge-red',
+  COMPLETED: 'pwa-badge pwa-badge-gray',
 };
 
 function safariDate(job: Assignment) {
@@ -75,52 +74,59 @@ function JobCard({ job, kind, onRespond }: {
   onRespond: (id: string, kind: 'jeep' | 'guide', status: 'ACCEPTED' | 'DECLINED') => void;
 }) {
   return (
-    <div className="border rounded-xl p-4 bg-white">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-gray-900">{safariType(job)} Safari</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${JOB_STATUS_BADGE[job.jobStatus] || 'bg-gray-100 text-gray-600'}`}>
-              {job.jobStatus}
-            </span>
-            <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-              {kind === 'jeep' ? <><Car className="w-3 h-3" /> Jeep</> : <><Compass className="w-3 h-3" /> Guide</>}
-            </span>
+    <div className="pwa-card">
+      <div style={{ padding: 16 }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1" style={{ flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{safariType(job)} Safari</span>
+              <span className={JOB_STATUS_BADGE[job.jobStatus] || 'pwa-badge pwa-badge-gray'}>
+                {job.jobStatus}
+              </span>
+              <span className="pwa-badge pwa-badge-blue" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                {kind === 'jeep' ? <><Car style={{ width: 12, height: 12 }} /> Jeep</> : <><Compass style={{ width: 12, height: 12 }} /> Guide</>}
+              </span>
+            </div>
+            <p style={{ fontSize: 13, color: '#6B6B6B', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: 0 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Calendar style={{ width: 14, height: 14, color: '#8A8A8A' }} />{safariDate(job)}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Users style={{ width: 14, height: 14, color: '#8A8A8A' }} />{guestCount(job)} guests
+              </span>
+              <span>{fee(job)}</span>
+            </p>
+            {job.privateSafari?.customerName && (
+              <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 4 }}>Customer: {job.privateSafari.customerName}</p>
+            )}
+            {job.privateSafari?.specialRequests && (
+              <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>Notes: {job.privateSafari.specialRequests}</p>
+            )}
+            {kind === 'jeep' && job.jeepNumber && (
+              <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>Jeep: {job.jeepNumber}</p>
+            )}
+            {job.sharedJeep?.owner?.user?.name && (
+              <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>Owner: {job.sharedJeep.owner.user.name}</p>
+            )}
           </div>
-          <p className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-gray-400" />{safariDate(job)}</span>
-            <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-gray-400" />{guestCount(job)} guests</span>
-            <span>{fee(job)}</span>
-          </p>
-          {job.privateSafari?.customerName && (
-            <p className="text-xs text-gray-400 mt-1">Customer: {job.privateSafari.customerName}</p>
-          )}
-          {job.privateSafari?.specialRequests && (
-            <p className="text-xs text-gray-400 mt-0.5">Notes: {job.privateSafari.specialRequests}</p>
-          )}
-          {kind === 'jeep' && job.jeepNumber && (
-            <p className="text-xs text-gray-400 mt-0.5">Jeep: {job.jeepNumber}</p>
-          )}
-          {job.sharedJeep?.owner?.user?.name && (
-            <p className="text-xs text-gray-400 mt-0.5">Owner: {job.sharedJeep.owner.user.name}</p>
+          {job.jobStatus === 'PENDING' && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={() => onRespond(job.id, kind, 'ACCEPTED')}
+                className="pwa-btn pwa-btn-primary pwa-btn-sm"
+              >
+                Accept
+              </button>
+              <button
+                onClick={() => onRespond(job.id, kind, 'DECLINED')}
+                className="pwa-btn pwa-btn-sm"
+                style={{ background: '#FEE2E2', color: '#991B1B' }}
+              >
+                Decline
+              </button>
+            </div>
           )}
         </div>
-        {job.jobStatus === 'PENDING' && (
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => onRespond(job.id, kind, 'ACCEPTED')}
-              className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              Accept
-            </button>
-            <button
-              onClick={() => onRespond(job.id, kind, 'DECLINED')}
-              className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              Decline
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -185,11 +191,19 @@ export default function VendorDashboard() {
       userRole={me?.role}
       onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
     >
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div style={{ maxWidth: 768, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* Subscription inactive notice */}
         {me?.vendor?.subscriptionStatus !== 'ACTIVE' && (
-          <Alert variant="warning" icon={<AlertCircle className="w-4 h-4" />} title="Subscription Inactive">
-            Subscription {me?.vendor?.subscriptionStatus?.toLowerCase()}. Contact Super Admin to activate.
-          </Alert>
+          <div className="pwa-notice pwa-notice-amber">
+            <AlertCircle style={{ width: 18, height: 18, flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <p style={{ fontWeight: 600, margin: 0 }}>Subscription Inactive</p>
+              <p style={{ margin: 0, fontSize: 13 }}>
+                Subscription {me?.vendor?.subscriptionStatus?.toLowerCase()}. Contact Super Admin to activate.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* ── OVERVIEW ── */}
@@ -197,8 +211,10 @@ export default function VendorDashboard() {
           <>
             {enabledFeatures.length > 0 ? (
               <div>
-                <h2 className="text-base font-semibold text-gray-700 mb-3">Enabled Features</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="pwa-section-head" style={{ marginBottom: 12 }}>
+                  <h2>Enabled Features</h2>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
                   {enabledFeatures.map((feature) => {
                     const info: Record<string, { icon: React.ElementType; label: string; desc: string }> = {
                       BOOKING_MANAGEMENT: { icon: ClipboardList, label: 'Booking Management', desc: 'View and manage your assigned bookings' },
@@ -208,49 +224,59 @@ export default function VendorDashboard() {
                     if (!item) return null;
                     const ItemIcon = item.icon;
                     return (
-                      <Card key={feature}>
-                        <CardContent className="p-5 flex items-start gap-4">
-                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                            <ItemIcon className="w-5 h-5 text-primary" />
+                      <div key={feature} className="pwa-card">
+                        <div style={{ padding: 20, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                          <div style={{
+                            width: 40, height: 40, background: '#E3EFE9', borderRadius: 12,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}>
+                            <ItemIcon style={{ width: 20, height: 20, color: '#2D6A4F' }} />
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{item.label}</p>
-                            <p className="text-sm text-gray-500 mt-0.5">{item.desc}</p>
+                            <p style={{ fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{item.label}</p>
+                            <p style={{ fontSize: 13, color: '#6B6B6B', marginTop: 2, marginBottom: 0 }}>{item.desc}</p>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               </div>
             ) : (
-              <Card>
-                <CardContent className="p-10 text-center">
-                  <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <Lock className="w-6 h-6 text-muted-foreground" />
+              <div className="pwa-card">
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                  <div style={{
+                    width: 48, height: 48, background: '#F1EEE7', borderRadius: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+                  }}>
+                    <Lock style={{ width: 24, height: 24, color: '#8A8A8A' }} />
                   </div>
-                  <p className="text-gray-500 font-medium">No features enabled yet</p>
-                  <p className="text-gray-400 text-sm mt-1">The Super Admin will assign features to your account.</p>
-                </CardContent>
-              </Card>
+                  <p style={{ color: '#6B6B6B', fontWeight: 500, margin: 0 }}>No features enabled yet</p>
+                  <p style={{ color: '#8A8A8A', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                    The Super Admin will assign features to your account.
+                  </p>
+                </div>
+              </div>
             )}
           </>
         )}
 
         {/* ── JOBS ── */}
         {activeTab === 'Jobs' && (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {jobsLoading ? (
-              <p className="text-gray-400 text-center py-8">Loading jobs...</p>
+              <p style={{ color: '#8A8A8A', textAlign: 'center', padding: '32px 0' }}>Loading jobs...</p>
             ) : (
               <>
                 {/* Pending */}
                 {pendingJobs.length > 0 && (
                   <div>
-                    <h2 className="text-base font-semibold text-amber-700 mb-3 flex items-center gap-2">
-                      <Clock className="w-4 h-4" /> Pending Response ({pendingJobs.length})
-                    </h2>
-                    <div className="space-y-3">
+                    <div className="pwa-section-head" style={{ marginBottom: 12 }}>
+                      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#92400E' }}>
+                        <Clock style={{ width: 16, height: 16 }} /> Pending Response ({pendingJobs.length})
+                      </h2>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {pendingJobs.map(j => (
                         <JobCard key={j.id} job={j} kind={j.kind} onRespond={handleRespond} />
                       ))}
@@ -261,10 +287,12 @@ export default function VendorDashboard() {
                 {/* Upcoming */}
                 {upcomingJobs.length > 0 && (
                   <div>
-                    <h2 className="text-base font-semibold text-green-700 mb-3 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" /> Upcoming Jobs ({upcomingJobs.length})
-                    </h2>
-                    <div className="space-y-3">
+                    <div className="pwa-section-head" style={{ marginBottom: 12 }}>
+                      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2D6A4F' }}>
+                        <CheckCircle style={{ width: 16, height: 16 }} /> Upcoming Jobs ({upcomingJobs.length})
+                      </h2>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {upcomingJobs.map(j => (
                         <JobCard key={j.id} job={j} kind={j.kind} onRespond={handleRespond} />
                       ))}
@@ -274,11 +302,13 @@ export default function VendorDashboard() {
 
                 {/* Declined */}
                 {declinedJobs.length > 0 && (
-                  <div>
-                    <h2 className="text-base font-semibold text-red-600 mb-3 flex items-center gap-2">
-                      <XCircle className="w-4 h-4" /> Declined ({declinedJobs.length})
-                    </h2>
-                    <div className="space-y-3 opacity-60">
+                  <div style={{ opacity: 0.6 }}>
+                    <div className="pwa-section-head" style={{ marginBottom: 12 }}>
+                      <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#991B1B' }}>
+                        <XCircle style={{ width: 16, height: 16 }} /> Declined ({declinedJobs.length})
+                      </h2>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {declinedJobs.map(j => (
                         <JobCard key={j.id} job={j} kind={j.kind} onRespond={handleRespond} />
                       ))}
@@ -287,15 +317,20 @@ export default function VendorDashboard() {
                 )}
 
                 {allJobs.length === 0 && (
-                  <Card>
-                    <CardContent className="p-10 text-center">
-                      <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <Briefcase className="w-6 h-6 text-muted-foreground" />
+                  <div className="pwa-card">
+                    <div style={{ padding: 40, textAlign: 'center' }}>
+                      <div style={{
+                        width: 48, height: 48, background: '#F1EEE7', borderRadius: 14,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+                      }}>
+                        <Briefcase style={{ width: 24, height: 24, color: '#8A8A8A' }} />
                       </div>
-                      <p className="text-gray-500 font-medium">No jobs yet</p>
-                      <p className="text-gray-400 text-sm mt-1">You'll see job assignments here when owners select you.</p>
-                    </CardContent>
-                  </Card>
+                      <p style={{ color: '#6B6B6B', fontWeight: 500, margin: 0 }}>No jobs yet</p>
+                      <p style={{ color: '#8A8A8A', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                        You'll see job assignments here when owners select you.
+                      </p>
+                    </div>
+                  </div>
                 )}
               </>
             )}
@@ -304,52 +339,68 @@ export default function VendorDashboard() {
 
         {/* ── EARNINGS ── */}
         {activeTab === 'Earnings' && (
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {enabledFeatures.includes('REPORTS_ANALYTICS') ? (
               earningsData ? (
-                <Card>
-                  <CardHeader><CardTitle>Earnings This Month</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="bg-green-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Total Earnings</p>
-                        <p className="text-2xl font-bold text-green-700">
+                <div className="pwa-card">
+                  <div style={{ padding: 16 }}>
+                    <div className="pwa-section-head" style={{ marginBottom: 16 }}>
+                      <h2>Earnings This Month</h2>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                      <div style={{ background: '#E3EFE9', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                        <p style={{ fontSize: 12, color: '#6B6B6B', marginBottom: 4, marginTop: 0 }}>Total Earnings</p>
+                        <p style={{ fontSize: 22, fontWeight: 800, color: '#2D6A4F', margin: 0 }}>
                           LKR {parseFloat(earningsData.total || '0').toLocaleString()}
                         </p>
                       </div>
-                      <div className="bg-blue-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Payments</p>
-                        <p className="text-2xl font-bold text-blue-700">{earningsData.payments?.length || 0}</p>
+                      <div style={{ background: '#DBEAFE', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                        <p style={{ fontSize: 12, color: '#6B6B6B', marginBottom: 4, marginTop: 0 }}>Payments</p>
+                        <p style={{ fontSize: 22, fontWeight: 800, color: '#1E40AF', margin: 0 }}>
+                          {earningsData.payments?.length || 0}
+                        </p>
                       </div>
                     </div>
                     {earningsData.payments?.length > 0 && (
-                      <div className="space-y-2">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                         {earningsData.payments.map((p: any) => (
-                          <div key={p.id} className="flex justify-between items-center py-2 border-b last:border-0">
+                          <div key={p.id} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '10px 0', borderBottom: '1px solid #E8E5DE',
+                          }}>
                             <div>
-                              <p className="text-sm font-medium text-gray-800">{p.description}</p>
-                              <p className="text-xs text-gray-400">{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : '—'}</p>
+                              <p style={{ fontSize: 14, fontWeight: 500, color: '#1A1A1A', margin: 0 }}>{p.description}</p>
+                              <p style={{ fontSize: 12, color: '#8A8A8A', margin: 0 }}>
+                                {p.paidAt ? new Date(p.paidAt).toLocaleDateString() : '—'}
+                              </p>
                             </div>
-                            <p className="text-sm font-semibold text-green-700">LKR {parseFloat(p.amount).toLocaleString()}</p>
+                            <p style={{ fontSize: 14, fontWeight: 600, color: '#2D6A4F', margin: 0 }}>
+                              LKR {parseFloat(p.amount).toLocaleString()}
+                            </p>
                           </div>
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ) : (
-                <p className="text-gray-400 text-center py-8">Loading earnings...</p>
+                <p style={{ color: '#8A8A8A', textAlign: 'center', padding: '32px 0' }}>Loading earnings...</p>
               )
             ) : (
-              <Card>
-                <CardContent className="p-10 text-center">
-                  <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <BarChart2 className="w-6 h-6 text-muted-foreground" />
+              <div className="pwa-card">
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                  <div style={{
+                    width: 48, height: 48, background: '#F1EEE7', borderRadius: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+                  }}>
+                    <BarChart2 style={{ width: 24, height: 24, color: '#8A8A8A' }} />
                   </div>
-                  <p className="text-gray-500 font-medium">Reports & Analytics not enabled</p>
-                  <p className="text-gray-400 text-sm mt-1">Contact Super Admin to enable this feature.</p>
-                </CardContent>
-              </Card>
+                  <p style={{ color: '#6B6B6B', fontWeight: 500, margin: 0 }}>Reports & Analytics not enabled</p>
+                  <p style={{ color: '#8A8A8A', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                    Contact Super Admin to enable this feature.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         )}
