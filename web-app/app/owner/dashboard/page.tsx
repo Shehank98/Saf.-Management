@@ -1312,7 +1312,7 @@ export default function OwnerDashboard() {
               {/* Stats row */}
               {stats && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="pwa-stat-card" style={{ highlight: true }}>
+                  <div className="pwa-stat-card highlight">
                     <div className="pwa-stat-ico" style={{ background: '#E3EFE9' }}>
                       <TrendingUp size={16} color="#2D6A4F" />
                     </div>
