@@ -9,6 +9,7 @@ const wrap = (fn: Function) => (req: any, res: any, next: any) =>
 
 // Public
 router.get('/available-dates', wrap(ctrl.getAvailableDates));
+router.get('/owner-profile', wrap(ctrl.getOwnerProfile));
 router.get('/jeeps/:date/:type', wrap(ctrl.getJeepsByDate));
 router.get('/booking/:bookingId', wrap(ctrl.getBooking));
 router.get('/link/:token', wrap(ctrl.getJeepByToken));

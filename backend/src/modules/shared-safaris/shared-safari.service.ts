@@ -51,12 +51,13 @@ export async function getAvailableDates(ownerId?: string, locationId?: string) {
   });
 }
 
-export async function getJeepsByDateAndType(date: string, safariType: string) {
+export async function getJeepsByDateAndType(date: string, safariType: string, ownerId?: string) {
   const allJeeps = await prisma.sharedJeep.findMany({
     where: {
       safariDate: { gte: new Date(date), lt: new Date(new Date(date).getTime() + 86400000) },
       safariType,
       status: { in: ['OPEN', 'PENDING_PAYMENT', 'CONFIRMED'] },
+      ...(ownerId ? { ownerId } : {}),
     },
     include: {
       bookings: {

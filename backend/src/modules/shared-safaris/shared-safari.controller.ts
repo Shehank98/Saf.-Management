@@ -29,8 +29,30 @@ export async function getAvailableDates(req: Request, res: Response): Promise<vo
 
 export async function getJeepsByDate(req: Request, res: Response): Promise<void> {
   const { date, type } = req.params;
-  const jeeps = await service.getJeepsByDateAndType(date, type);
+  const { owner: ownerUserId } = req.query;
+
+  let ownerId: string | undefined;
+  if (ownerUserId) {
+    const found = await prisma.safariOwner.findUnique({
+      where: { userId: ownerUserId as string },
+      select: { id: true },
+    });
+    ownerId = found?.id;
+  }
+
+  const jeeps = await service.getJeepsByDateAndType(date, type, ownerId);
   res.json(successResponse(jeeps));
+}
+
+export async function getOwnerProfile(req: Request, res: Response): Promise<void> {
+  const { owner: ownerUserId } = req.query;
+  if (!ownerUserId) { res.status(400).json(errorResponse('owner param required')); return; }
+  const owner = await prisma.safariOwner.findUnique({
+    where: { userId: ownerUserId as string },
+    select: { companyName: true, userId: true },
+  });
+  if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
+  res.json(successResponse(owner));
 }
 
 export async function validateLocation(req: Request, res: Response): Promise<void> {

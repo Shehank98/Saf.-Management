@@ -65,10 +65,19 @@ function BookingContent() {
   });
 
   const { data: jeepsData, isLoading: jeepsLoading } = useQuery<any[]>({
-    queryKey: ['jeeps-for-date', selectedDate, selectedType],
+    queryKey: ['jeeps-for-date', selectedDate, selectedType, ownerUserId],
     queryFn: () =>
-      api.get(`/shared-safari/jeeps/${selectedDate}/${encodeURIComponent(selectedType!)}`).then((r) => r.data.data),
+      api.get(`/shared-safari/jeeps/${selectedDate}/${encodeURIComponent(selectedType!)}`, {
+        params: ownerUserId ? { owner: ownerUserId } : {},
+      }).then((r) => r.data.data),
     enabled: !!selectedDate && !!selectedType,
+  });
+
+  const { data: ownerProfile } = useQuery<{ companyName: string; userId: string }>({
+    queryKey: ['owner-profile', ownerUserId],
+    queryFn: () =>
+      api.get('/shared-safari/owner-profile', { params: { owner: ownerUserId } }).then((r) => r.data.data),
+    enabled: !!ownerUserId,
   });
 
   const dates: AvailableDate[] = datesData?.data || [];
@@ -146,8 +155,12 @@ function BookingContent() {
       <div style={{ position: 'sticky', top: 0, zIndex: 30, background: '#fff', borderBottom: '1px solid var(--line)', padding: '12px 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div>
-            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Find your safari</p>
-            <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>Sri Lanka · {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
+              {ownerProfile?.companyName || 'Safari Bookings'}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>
+              Sri Lanka · {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
           </div>
         </div>
 
