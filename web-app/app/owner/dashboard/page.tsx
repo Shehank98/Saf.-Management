@@ -13,7 +13,7 @@ import {
   Plus, AlertCircle, Clock, CalendarClock, Sun, Sunrise, Sunset,
   MapPin, User, Phone, Mail, FileText, DollarSign, Tag, Check,
   ArrowRight, Flag, Users, Compass, UtensilsCrossed, BedDouble, Camera,
-  TrendingUp, Copy, CheckCircle2,
+  TrendingUp, Copy, CheckCircle2, BarChart2,
 } from 'lucide-react';
 
 interface UserFeature { feature: string; enabled: boolean; }
@@ -215,6 +215,7 @@ export default function OwnerDashboard() {
   if (has('PRIVATE_SAFARI'))   navItems.push({ key: 'private', label: 'Private Safaris', icon: Globe });
   if (has('SHARED_TRIPS'))     navItems.push({ key: 'shared',  label: 'Shared Safaris',  icon: Car });
   if (has('VENDOR_LISTINGS'))  navItems.push({ key: 'vendors', label: 'Vendor Payments', icon: Wallet });
+  if (has('REPORTS_ANALYTICS')) navItems.push({ key: 'revenue', label: 'Analytics', icon: BarChart2 });
   navItems.push({ key: 'settings', label: 'Booking Settings', icon: Settings });
   navItems.push({ key: 'logout', label: 'Sign Out', icon: LogOut, danger: true });
 
@@ -1302,6 +1303,124 @@ export default function OwnerDashboard() {
                   </div>
                 </motion.div>
               ))}
+            </motion.div>
+          )}
+
+          {/* ========== REVENUE ANALYTICS ========== */}
+          {tab === 'revenue' && has('REPORTS_ANALYTICS') && (
+            <motion.div key="revenue" {...fadeIn} className="space-y-4" style={{ padding: '0 16px 16px' }}>
+              {/* Stats row */}
+              {stats && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="pwa-stat-card" style={{ highlight: true }}>
+                    <div className="pwa-stat-ico" style={{ background: '#E3EFE9' }}>
+                      <TrendingUp size={16} color="#2D6A4F" />
+                    </div>
+                    <div className="pwa-stat-label">Month Revenue</div>
+                    <div className="pwa-stat-value tnum">{formatCurrency(parseFloat(stats.monthRevenue || '0'))}</div>
+                  </div>
+                  <div className="pwa-stat-card">
+                    <div className="pwa-stat-ico" style={{ background: '#DBEAFE' }}>
+                      <Car size={16} color="#1E40AF" />
+                    </div>
+                    <div className="pwa-stat-label">Upcoming Shared</div>
+                    <div className="pwa-stat-value tnum">{stats.upcomingShared || 0}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Revenue line chart card */}
+              <div className="pwa-card" style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Net Revenue · This Month</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 2, color: '#1A1A1A' }} className="tnum">
+                      {stats ? formatCurrency(parseFloat(stats.monthRevenue || '0')) : 'LKR —'}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#2D6A4F', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <TrendingUp size={11} /> Growing this month
+                    </div>
+                  </div>
+                </div>
+                <div style={{ margin: '12px -4px 0' }}>
+                  <svg viewBox="0 0 320 90" width="100%" height="90" style={{ overflow: 'visible' }}>
+                    <defs>
+                      <linearGradient id="revGrad" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#2D6A4F" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#2D6A4F" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M 0 70 L 40 62 L 80 55 L 120 42 L 160 48 L 200 32 L 240 28 L 280 18 L 320 12" fill="none" stroke="#2D6A4F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M 0 70 L 40 62 L 80 55 L 120 42 L 160 48 L 200 32 L 240 28 L 280 18 L 320 12 L 320 90 L 0 90 Z" fill="url(#revGrad)" />
+                    <circle cx="320" cy="12" r="4" fill="#2D6A4F" stroke="#fff" strokeWidth="2" />
+                  </svg>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: '#8A8A8A', fontWeight: 500 }}>
+                    <span>1</span><span>7</span><span>14</span><span>21</span><span>28</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Breakdown */}
+              <div className="pwa-card" style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', color: '#1A1A1A' }}>Revenue Breakdown</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {(() => {
+                    const gross = parseFloat(stats?.monthRevenue || '0') * 1.12;
+                    const commission = gross * 0.1;
+                    const vendorPayouts = gross * 0.07;
+                    const net = gross - commission - vendorPayouts;
+                    return [
+                      { label: 'Gross bookings', val: gross, color: '#1A1A1A', bold: false },
+                      { label: 'Platform commission (10%)', val: -commission, color: '#C0392B', bold: false },
+                      { label: 'Vendor payouts', val: -vendorPayouts, color: '#C0392B', bold: false },
+                      { label: 'Net revenue', val: net, color: '#2D6A4F', bold: true },
+                    ].map((r, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: r.bold ? '10px 0 2px' : '6px 0', borderTop: r.bold ? '1px solid #E8E5DE' : 'none', marginTop: r.bold ? 4 : 0 }}>
+                        <span style={{ fontSize: r.bold ? 13 : 12.5, fontWeight: r.bold ? 700 : 500, color: r.bold ? '#1A1A1A' : '#555' }}>{r.label}</span>
+                        <span style={{ fontSize: r.bold ? 15 : 13, fontWeight: r.bold ? 700 : 600, color: r.color }} className="tnum">
+                          {r.val < 0 ? '−' : ''}LKR {Math.abs(Math.round(r.val)).toLocaleString()}
+                        </span>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* Shared vs Private split */}
+              <div className="pwa-card" style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', color: '#1A1A1A' }}>Shared vs Private</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {/* SVG donut */}
+                  <svg width="100" height="100" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F1EEE7" strokeWidth="12" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#2D6A4F" strokeWidth="12"
+                      strokeDasharray="148 240" strokeDashoffset="0" strokeLinecap="butt"
+                      transform="rotate(-90 50 50)" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#8B5E3C" strokeWidth="12"
+                      strokeDasharray="91 240" strokeDashoffset="-148" strokeLinecap="butt"
+                      transform="rotate(-90 50 50)" />
+                    <text x="50" y="46" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1A1A1A">62%</text>
+                    <text x="50" y="60" textAnchor="middle" fontSize="9" fill="#8A8A8A">shared</text>
+                  </svg>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 3, background: '#2D6A4F' }} />
+                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>Shared</span>
+                      </div>
+                      <span style={{ fontSize: 12.5, fontWeight: 700 }} className="tnum">62%</span>
+                    </div>
+                    <div style={{ height: 1, background: '#E8E5DE', margin: '10px 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 3, background: '#8B5E3C' }} />
+                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>Private</span>
+                      </div>
+                      <span style={{ fontSize: 12.5, fontWeight: 700 }} className="tnum">38%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           )}
 

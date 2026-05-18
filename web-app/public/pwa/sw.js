@@ -16,6 +16,7 @@ const STATIC_ASSETS = [
   '/pwa/screens-vendor.jsx',
   '/pwa/screens-admin.jsx',
   '/pwa/screens-shared.jsx',
+  '/offline',
 ];
 
 self.addEventListener('install', (event) => {

@@ -10,13 +10,14 @@ import {
   LayoutDashboard, Briefcase, TrendingUp, LogOut,
   Car, Compass, Calendar, Users, Lock, ClipboardList, BarChart2,
   CheckCircle, XCircle, Clock, AlertCircle,
+  Zap, Bell, Star, Headphones,
 } from 'lucide-react';
 
 interface UserFeature { feature: string; enabled: boolean; }
 interface MeData {
   name: string; role: string; approvalStatus: string;
   features: UserFeature[];
-  vendor?: { businessName: string; vendorType: string; subscriptionStatus: string; };
+  vendor?: { businessName: string; vendorType: string; subscriptionStatus: string; subscriptionEnd?: string | null; };
 }
 interface Assignment {
   id: string;
@@ -40,8 +41,9 @@ interface Assignment {
 const VENDOR_NAV_ITEMS: NavItem[] = [
   { key: 'Overview',  label: 'Overview',  icon: LayoutDashboard },
   { key: 'Jobs',      label: 'Jobs',      icon: Briefcase },
-  { key: 'Earnings',  label: 'Earnings',  icon: TrendingUp },
-  { key: 'logout',    label: 'Sign Out',  icon: LogOut, danger: true },
+  { key: 'Earnings',      label: 'Earnings',   icon: TrendingUp },
+  { key: 'Subscription', label: 'Subscribe',  icon: Zap },
+  { key: 'logout',       label: 'Sign Out',   icon: LogOut, danger: true },
 ];
 
 const JOB_STATUS_BADGE: Record<string, string> = {
@@ -402,6 +404,86 @@ export default function VendorDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── SUBSCRIPTION ── */}
+        {activeTab === 'Subscription' && (
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Plan card */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1F4F3A 0%, #2D6A4F 100%)',
+              borderRadius: 16, padding: '22px 20px', color: '#fff', position: 'relative', overflow: 'hidden'
+            }}>
+              {/* decorative circles */}
+              <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
+              <div style={{ position: 'absolute', bottom: -50, left: -20, width: 160, height: 160, background: 'rgba(255,255,255,0.04)', borderRadius: '50%' }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                  <div>
+                    <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Current Plan</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>Vendor Pro</div>
+                  </div>
+                  <div style={{ padding: '4px 10px', background: 'rgba(255,255,255,0.2)', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
+                    {me?.vendor?.subscriptionStatus || 'ACTIVE'}
+                  </div>
+                </div>
+                <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.03em' }}>
+                  LKR 2,500<span style={{ fontSize: 14, fontWeight: 500, opacity: 0.7 }}>/month</span>
+                </div>
+                {me?.vendor?.subscriptionEnd && (() => {
+                  const end = new Date(me!.vendor!.subscriptionEnd!);
+                  const daysLeft = Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000));
+                  const pct = Math.max(4, Math.min(100, (daysLeft / 30) * 100));
+                  return (
+                    <div style={{ marginTop: 18, padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontSize: 12, opacity: 0.85 }}>Renews in {daysLeft} days</span>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: '#fff' }} />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Renew button */}
+            <a
+              href="mailto:admin@safari.lk?subject=Subscription Renewal"
+              className="pwa-btn pwa-btn-primary pwa-btn-block pwa-btn-lg"
+              style={{ textDecoration: 'none', textAlign: 'center' }}
+            >
+              Contact Admin to Renew
+            </a>
+
+            {/* Benefits */}
+            <div>
+              <div className="pwa-section-head"><h2>Plan benefits</h2></div>
+              <div className="pwa-card">
+                {[
+                  { icon: Briefcase,   text: 'Unlimited job assignments' },
+                  { icon: Bell,        text: 'Push notifications for new jobs' },
+                  { icon: BarChart2,   text: 'Earnings analytics & history' },
+                  { icon: Star,        text: 'Featured listing in vendor directory' },
+                  { icon: Headphones,  text: 'Priority support · 24/7' },
+                ].map((b, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < 4 ? '1px solid #F1EEE7' : 'none' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: '#E3EFE9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <b.icon size={15} color="#2D6A4F" />
+                    </div>
+                    <span style={{ fontSize: 13, flex: 1, color: '#1A1A1A' }}>{b.text}</span>
+                    <CheckCircle size={16} color="#2D6A4F" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: '10px 14px', background: '#FAFAF7', borderRadius: 12, fontSize: 11.5, color: '#8A8A8A', textAlign: 'center', lineHeight: 1.5 }}>
+              Subscription managed by <strong style={{ color: '#1A1A1A' }}>Super Admin</strong> · LKR 2,500/month
+            </div>
           </div>
         )}
       </div>

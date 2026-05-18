@@ -939,6 +939,88 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* ── ANALYTICS ── */}
+        {activeTab === 'Analytics' && (
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Platform revenue card */}
+            <div className="pwa-card" style={{ padding: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Platform Revenue</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 2 }} className="tnum">LKR 28.4M</div>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#2D6A4F', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ↑ +18.4%
+                </span>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <svg viewBox="0 0 320 100" width="100%" height="100">
+                  <defs>
+                    <linearGradient id="lg2" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#2D6A4F" stopOpacity="0.22" />
+                      <stop offset="100%" stopColor="#2D6A4F" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 0 90 L 32 85 L 64 75 L 96 70 L 128 55 L 160 60 L 192 42 L 224 38 L 256 28 L 288 22 L 320 12" fill="none" stroke="#2D6A4F" strokeWidth="2.5" strokeLinejoin="round" />
+                  <path d="M 0 90 L 32 85 L 64 75 L 96 70 L 128 55 L 160 60 L 192 42 L 224 38 L 256 28 L 288 22 L 320 12 L 320 100 L 0 100 Z" fill="url(#lg2)" />
+                  <circle cx="320" cy="12" r="4" fill="#2D6A4F" stroke="#fff" strokeWidth="2" />
+                </svg>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#8A8A8A', fontWeight: 500, marginTop: 4 }}>
+                  <span>Jun</span><span>Aug</span><span>Oct</span><span>Dec</span><span>Feb</span><span>Apr</span><span>May</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bookings volume */}
+            <div className="pwa-card" style={{ padding: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#1A1A1A' }}>Bookings Volume</h3>
+                <span style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600 }}>2,891 this month</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 72 }}>
+                {[120, 145, 168, 142, 180, 195, 210, 235, 220, 268, 285, 312].map((v, i, arr) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                    <div style={{ width: '100%', background: i === arr.length - 1 ? '#2D6A4F' : '#E3EFE9', borderRadius: 4, height: `${(v / 312) * 100}%`, transition: 'height 0.3s' }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#8A8A8A', fontWeight: 500, marginTop: 6 }}>
+                <span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+              </div>
+            </div>
+
+            {/* Top safari owners */}
+            <div>
+              <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', color: '#1A1A1A' }}>Top Safari Owners</h3>
+              <div className="pwa-card" style={{ overflow: 'hidden' }}>
+                {[
+                  { rank: 1, name: 'Wild Lanka Co.', rev: 2410000, bookings: 148, medal: '🥇' },
+                  { rank: 2, name: 'Northern Trails', rev: 1820000, bookings: 92, medal: '🥈' },
+                  { rank: 3, name: 'Yala Heritage Safaris', rev: 1640000, bookings: 87, medal: '🥉' },
+                  { rank: 4, name: 'Eastern Eco Tours', rev: 1180000, bookings: 64, medal: '4' },
+                  { rank: 5, name: 'Bundala Wildlife', rev: 980000, bookings: 52, medal: '5' },
+                ].map((o, i, arr) => (
+                  <div key={o.rank} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid #F1EEE7' : 'none' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i < 3 ? '#FAEFD9' : '#FAFAF7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: i < 3 ? 14 : 12, fontWeight: 700, color: '#8B5E3C', flexShrink: 0 }}>
+                      {o.medal}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
+                      <div style={{ fontSize: 11, color: '#8A8A8A' }}>{o.bookings} bookings</div>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2D6A4F' }} className="tnum">LKR {(o.rev / 1000000).toFixed(2)}M</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Note about live data */}
+            <div style={{ padding: '10px 14px', background: '#E3EFE9', borderRadius: 12, fontSize: 11.5, color: '#1F4F3A', textAlign: 'center' }}>
+              Analytics shown are platform-wide estimates · Live data coming soon
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   );
