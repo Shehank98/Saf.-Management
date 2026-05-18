@@ -27,19 +27,32 @@ export async function getAvailableDates(ownerId?: string, locationId?: string) {
     dateMap.get(key)!.push(jeep);
   }
 
-  return Array.from(dateMap.entries()).map(([date, items]) => ({
-    date,
-    safariTypes: items.map((j) => ({
-      type: j.safariType,
-      availableSeats: j.totalSeats - j.reservedSeats,
-      status: j.status,
-      locationId: j.locationId,
-    })),
-  }));
+  return Array.from(dateMap.entries()).map(([date, items]) => {
+    // Aggregate multiple jeeps of the same type — sum available seats so duplicates
+    // (auto-scheduled + manually created, or overflow jeeps) collapse into one row.
+    const typeMap = new Map<string, { availableSeats: number; status: string; locationId: string | null }>();
+    for (const j of items) {
+      const avail = j.totalSeats - j.reservedSeats - j.paidSeats;
+      if (!typeMap.has(j.safariType)) {
+        typeMap.set(j.safariType, { availableSeats: avail, status: j.status, locationId: j.locationId });
+      } else {
+        typeMap.get(j.safariType)!.availableSeats += avail;
+      }
+    }
+    return {
+      date,
+      safariTypes: Array.from(typeMap.entries()).map(([type, d]) => ({
+        type,
+        availableSeats: Math.max(0, d.availableSeats),
+        status: d.status,
+        locationId: d.locationId,
+      })),
+    };
+  });
 }
 
 export async function getJeepsByDateAndType(date: string, safariType: string) {
-  return prisma.sharedJeep.findMany({
+  const allJeeps = await prisma.sharedJeep.findMany({
     where: {
       safariDate: { gte: new Date(date), lt: new Date(new Date(date).getTime() + 86400000) },
       safariType,
@@ -52,6 +65,36 @@ export async function getJeepsByDateAndType(date: string, safariType: string) {
       owner: { select: { companyName: true } },
     },
   });
+
+  // For each owner, show only one jeep: the most-filled one that still has open seats.
+  // This prevents showing both a manually-created and an auto-scheduled jeep for the same
+  // owner/date/type, and hides the original PENDING_PAYMENT jeep once an overflow OPEN
+  // jeep is created (so customers always book into the most-consolidated slot).
+  const byOwner = new Map<string, typeof allJeeps>();
+  for (const jeep of allJeeps) {
+    if (!byOwner.has(jeep.ownerId)) byOwner.set(jeep.ownerId, []);
+    byOwner.get(jeep.ownerId)!.push(jeep);
+  }
+
+  const result: typeof allJeeps = [];
+  for (const ownerJeeps of byOwner.values()) {
+    const withSeats = ownerJeeps.filter(
+      (j) => j.totalSeats - j.reservedSeats - j.paidSeats > 0,
+    );
+    if (withSeats.length === 0) continue;
+
+    // Prefer PENDING_PAYMENT (most filled) → OPEN; within same status prefer most bookings
+    const STATUS_PRIO: Record<string, number> = { PENDING_PAYMENT: 0, CONFIRMED: 1, OPEN: 2 };
+    withSeats.sort((a, b) => {
+      const pa = STATUS_PRIO[a.status] ?? 3;
+      const pb = STATUS_PRIO[b.status] ?? 3;
+      if (pa !== pb) return pa - pb;
+      return (b.reservedSeats + b.paidSeats) - (a.reservedSeats + a.paidSeats);
+    });
+    result.push(withSeats[0]);
+  }
+
+  return result;
 }
 
 export async function reserveSeat(
@@ -292,6 +335,7 @@ export async function createSharedJeep(ownerId: string, data: {
     }
   }
 
+  const token = randomBytes(16).toString('hex');
   return prisma.sharedJeep.create({
     data: {
       ownerId,
@@ -300,6 +344,7 @@ export async function createSharedJeep(ownerId: string, data: {
       pricePerSeat: data.pricePerSeat,
       safariDeadline,
       locationId: data.locationId || null,
+      bookingLinkToken: token,
     },
   });
 }
