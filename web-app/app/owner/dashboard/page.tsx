@@ -120,7 +120,7 @@ export default function OwnerDashboard() {
   const { data: privateSafaris, isLoading: privateLoading } = useQuery({
     queryKey: ['owner-private-safaris'],
     queryFn: () => api.get('/private-safari/owner/list').then((r) => r.data.data),
-    enabled: tab === 'private',
+    enabled: tab === 'private' || tab === 'revenue',
   });
 
   const { data: vendorPaymentsData } = useQuery({
@@ -1543,8 +1543,13 @@ export default function OwnerDashboard() {
                             <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {jeep.bookings.map((b: any) => {
                                 const name = b.customer?.user?.name || 'Guest';
+                                const phone = b.customer?.user?.phone || '';
                                 const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
                                 const isPaid = b.status === 'PAID' || b.status === 'CONFIRMED';
+                                const needsNudge = b.status === 'RESERVED' || b.status === 'PAYMENT_PENDING';
+                                const nudgeText = encodeURIComponent(
+                                  `Hi ${name}! 👋 This is a reminder that your safari seat (${jeep.safariType} on ${new Date(jeep.safariDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}) is waiting for payment. Please complete your payment to confirm your spot. Thank you! 🦁`
+                                );
                                 return (
                                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#FAFAF7', borderRadius: 10 }}>
                                     <div style={{ width: 32, height: 32, borderRadius: 10, background: isPaid ? '#E3EFE9' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: isPaid ? '#2D6A4F' : '#92400E', flexShrink: 0 }}>
@@ -1552,8 +1557,8 @@ export default function OwnerDashboard() {
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <p style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
-                                      {b.customer?.user?.phone && (
-                                        <p style={{ fontSize: 11, color: '#8A8A8A', margin: 0 }}>{b.customer.user.phone}</p>
+                                      {phone && (
+                                        <p style={{ fontSize: 11, color: '#8A8A8A', margin: 0 }}>{phone}</p>
                                       )}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -1561,6 +1566,16 @@ export default function OwnerDashboard() {
                                       <span style={{ fontSize: 11, fontWeight: 600, borderRadius: 6, padding: '2px 7px', background: isPaid ? '#E3EFE9' : '#FEF3C7', color: isPaid ? '#2D6A4F' : '#92400E' }}>
                                         {b.status}
                                       </span>
+                                      {needsNudge && phone && (
+                                        <a
+                                          href={`https://wa.me/${phone.replace(/\D/g, '')}?text=${nudgeText}`}
+                                          target="_blank" rel="noreferrer"
+                                          title="Send WhatsApp nudge"
+                                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, background: '#25D366', color: '#fff', flexShrink: 0 }}
+                                        >
+                                          <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                        </a>
+                                      )}
                                     </div>
                                   </div>
                                 );
@@ -1702,41 +1717,51 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
-              {/* Shared vs Private split */}
-              <div className="pwa-card" style={{ padding: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', color: '#1A1A1A' }}>Shared vs Private</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  {/* SVG donut */}
-                  <svg width="100" height="100" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#F1EEE7" strokeWidth="12" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#2D6A4F" strokeWidth="12"
-                      strokeDasharray="148 240" strokeDashoffset="0" strokeLinecap="butt"
-                      transform="rotate(-90 50 50)" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#8B5E3C" strokeWidth="12"
-                      strokeDasharray="91 240" strokeDashoffset="-148" strokeLinecap="butt"
-                      transform="rotate(-90 50 50)" />
-                    <text x="50" y="46" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1A1A1A">62%</text>
-                    <text x="50" y="60" textAnchor="middle" fontSize="9" fill="#8A8A8A">shared</text>
-                  </svg>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 3, background: '#2D6A4F' }} />
-                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>Shared</span>
+              {/* Shared vs Private split — computed from live data */}
+              {(() => {
+                const sharedCount = jeepsData?.length || 0;
+                const privateCount = privateSafaris?.length || 0;
+                const total = sharedCount + privateCount;
+                const sharedPct = total > 0 ? Math.round((sharedCount / total) * 100) : 50;
+                const privatePct = 100 - sharedPct;
+                const circumference = 2 * Math.PI * 38;
+                const sharedDash = (sharedPct / 100) * circumference;
+                return (
+                  <div className="pwa-card" style={{ padding: 16 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', color: '#1A1A1A' }}>Shared vs Private</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <svg width="100" height="100" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="#F1EEE7" strokeWidth="12" />
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="#2D6A4F" strokeWidth="12"
+                          strokeDasharray={`${sharedDash.toFixed(1)} ${circumference.toFixed(1)}`}
+                          strokeDashoffset="0" transform="rotate(-90 50 50)" />
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="#8B5E3C" strokeWidth="12"
+                          strokeDasharray={`${(circumference - sharedDash).toFixed(1)} ${circumference.toFixed(1)}`}
+                          strokeDashoffset={`${-sharedDash.toFixed(1)}`} transform="rotate(-90 50 50)" />
+                        <text x="50" y="46" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1A1A1A">{sharedPct}%</text>
+                        <text x="50" y="60" textAnchor="middle" fontSize="9" fill="#8A8A8A">shared</text>
+                      </svg>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 3, background: '#2D6A4F' }} />
+                            <span style={{ fontSize: 12.5, fontWeight: 600 }}>Shared ({sharedCount})</span>
+                          </div>
+                          <span style={{ fontSize: 12.5, fontWeight: 700 }} className="tnum">{sharedPct}%</span>
+                        </div>
+                        <div style={{ height: 1, background: '#E8E5DE', margin: '10px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 3, background: '#8B5E3C' }} />
+                            <span style={{ fontSize: 12.5, fontWeight: 600 }}>Private ({privateCount})</span>
+                          </div>
+                          <span style={{ fontSize: 12.5, fontWeight: 700 }} className="tnum">{privatePct}%</span>
+                        </div>
                       </div>
-                      <span style={{ fontSize: 12.5, fontWeight: 700 }} className="tnum">62%</span>
-                    </div>
-                    <div style={{ height: 1, background: '#E8E5DE', margin: '10px 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 3, background: '#8B5E3C' }} />
-                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>Private</span>
-                      </div>
-                      <span style={{ fontSize: 12.5, fontWeight: 700 }} className="tnum">38%</span>
                     </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
             </motion.div>
           )}
 

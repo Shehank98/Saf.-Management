@@ -89,7 +89,7 @@ export default function AdminDashboard() {
   const { data: allUsers } = useQuery({
     queryKey: ['admin-all-users'],
     queryFn: () => api.get('/admin/users').then((r) => r.data.data),
-    enabled: authed && (activeTab === 'Users' || activeTab === 'Features'),
+    enabled: authed && (activeTab === 'Users' || activeTab === 'Features' || activeTab === 'Analytics'),
     retry: false,
   });
 
@@ -947,11 +947,13 @@ export default function AdminDashboard() {
             <div className="pwa-card" style={{ padding: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Platform Revenue</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 2 }} className="tnum">LKR 28.4M</div>
+                  <div style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Subscription Revenue · This Month</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 2, color: '#1A1A1A' }} className="tnum">
+                    {analyticsData ? formatCurrency(parseFloat(String(analyticsData.subscriptionRevenue || '0'))) : '—'}
+                  </div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 600, color: '#2D6A4F', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  ↑ +18.4%
+                  {stats ? formatCurrency(parseFloat(String(stats.revenue.thisMonth || '0'))) + ' bookings' : ''}
                 </span>
               </div>
               <div style={{ marginTop: 12 }}>
@@ -966,58 +968,114 @@ export default function AdminDashboard() {
                   <path d="M 0 90 L 32 85 L 64 75 L 96 70 L 128 55 L 160 60 L 192 42 L 224 38 L 256 28 L 288 22 L 320 12 L 320 100 L 0 100 Z" fill="url(#lg2)" />
                   <circle cx="320" cy="12" r="4" fill="#2D6A4F" stroke="#fff" strokeWidth="2" />
                 </svg>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#8A8A8A', fontWeight: 500, marginTop: 4 }}>
-                  <span>Jun</span><span>Aug</span><span>Oct</span><span>Dec</span><span>Feb</span><span>Apr</span><span>May</span>
-                </div>
               </div>
             </div>
 
-            {/* Bookings volume */}
-            <div className="pwa-card" style={{ padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#1A1A1A' }}>Bookings Volume</h3>
-                <span style={{ fontSize: 11, color: '#8A8A8A', fontWeight: 600 }}>2,891 this month</span>
+            {/* Safari status breakdown */}
+            {analyticsData && (
+              <div className="pwa-card" style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', color: '#1A1A1A' }}>Safari Status Breakdown</h3>
+                {(() => {
+                  const combined: Record<string, { shared: number; private: number }> = {};
+                  (analyticsData.sharedByStatus || []).forEach((s: any) => {
+                    combined[s.status] = { ...( combined[s.status] || { shared: 0, private: 0 }), shared: s._count };
+                  });
+                  (analyticsData.privateByStatus || []).forEach((s: any) => {
+                    combined[s.status] = { ...( combined[s.status] || { shared: 0, private: 0 }), private: s._count };
+                  });
+                  const chartData = Object.entries(combined).map(([status, counts]) => ({
+                    status: status.replace(/_/g, ' ').slice(0, 12),
+                    Shared: counts.shared,
+                    Private: counts.private,
+                  }));
+                  if (chartData.length === 0) return <p style={{ color: '#8A8A8A', fontSize: 13, textAlign: 'center' }}>No safari data this period</p>;
+                  return (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE6" vertical={false} />
+                        <XAxis dataKey="status" tick={{ fontSize: 9, fill: '#8A8A8A' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 9, fill: '#8A8A8A' }} axisLine={false} tickLine={false} />
+                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E8E5DE' }} />
+                        <Bar dataKey="Shared" fill="#2D6A4F" radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="Private" fill="#8B5E3C" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 72 }}>
-                {[120, 145, 168, 142, 180, 195, 210, 235, 220, 268, 285, 312].map((v, i, arr) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-                    <div style={{ width: '100%', background: i === arr.length - 1 ? '#2D6A4F' : '#E3EFE9', borderRadius: 4, height: `${(v / 312) * 100}%`, transition: 'height 0.3s' }} />
-                  </div>
-                ))}
+            )}
+
+            {/* Safari type split */}
+            {stats && (
+              <div className="pwa-card" style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', color: '#1A1A1A' }}>Shared vs Private Safaris</h3>
+                {(() => {
+                  const total = (stats.safaris.shared || 0) + (stats.safaris.private || 0);
+                  const sharedPct = total > 0 ? Math.round((stats.safaris.shared / total) * 100) : 50;
+                  const privatePct = 100 - sharedPct;
+                  const circumference = 2 * Math.PI * 38;
+                  const sharedDash = (sharedPct / 100) * circumference;
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <svg width="100" height="100" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="#F1EEE7" strokeWidth="12" />
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="#2D6A4F" strokeWidth="12"
+                          strokeDasharray={`${sharedDash.toFixed(1)} ${circumference.toFixed(1)}`} strokeDashoffset="0"
+                          transform="rotate(-90 50 50)" />
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="#8B5E3C" strokeWidth="12"
+                          strokeDasharray={`${(circumference - sharedDash).toFixed(1)} ${circumference.toFixed(1)}`}
+                          strokeDashoffset={`${-sharedDash.toFixed(1)}`}
+                          transform="rotate(-90 50 50)" />
+                        <text x="50" y="46" textAnchor="middle" fontSize="13" fontWeight="800" fill="#1A1A1A">{sharedPct}%</text>
+                        <text x="50" y="60" textAnchor="middle" fontSize="9" fill="#8A8A8A">shared</text>
+                      </svg>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 3, background: '#2D6A4F' }} />
+                            <span style={{ fontSize: 12.5, fontWeight: 600 }}>Shared ({stats.safaris.shared})</span>
+                          </div>
+                          <span style={{ fontSize: 12.5, fontWeight: 700 }}>{sharedPct}%</span>
+                        </div>
+                        <div style={{ height: 1, background: '#E8E5DE', margin: '10px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 3, background: '#8B5E3C' }} />
+                            <span style={{ fontSize: 12.5, fontWeight: 600 }}>Private ({stats.safaris.private})</span>
+                          </div>
+                          <span style={{ fontSize: 12.5, fontWeight: 700 }}>{privatePct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#8A8A8A', fontWeight: 500, marginTop: 6 }}>
-                <span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
-              </div>
-            </div>
+            )}
 
             {/* Top safari owners */}
             <div>
               <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', color: '#1A1A1A' }}>Top Safari Owners</h3>
               <div className="pwa-card" style={{ overflow: 'hidden' }}>
-                {[
-                  { rank: 1, name: 'Wild Lanka Co.', rev: 2410000, bookings: 148, medal: '🥇' },
-                  { rank: 2, name: 'Northern Trails', rev: 1820000, bookings: 92, medal: '🥈' },
-                  { rank: 3, name: 'Yala Heritage Safaris', rev: 1640000, bookings: 87, medal: '🥉' },
-                  { rank: 4, name: 'Eastern Eco Tours', rev: 1180000, bookings: 64, medal: '4' },
-                  { rank: 5, name: 'Bundala Wildlife', rev: 980000, bookings: 52, medal: '5' },
-                ].map((o, i, arr) => (
-                  <div key={o.rank} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid #F1EEE7' : 'none' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: i < 3 ? '#FAEFD9' : '#FAFAF7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: i < 3 ? 14 : 12, fontWeight: 700, color: '#8B5E3C', flexShrink: 0 }}>
-                      {o.medal}
+                {(allUsers?.filter((u: any) => u.role === 'SAFARI_OWNER' && u.approvalStatus === 'APPROVED') || [])
+                  .slice(0, 5)
+                  .map((o: any, i: number, arr: any[]) => (
+                    <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid #F1EEE7' : 'none' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: i < 3 ? '#FAEFD9' : '#FAFAF7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: i < 3 ? 14 : 12, fontWeight: 700, color: '#8B5E3C', flexShrink: 0 }}>
+                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {o.safariOwner?.companyName || o.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#8A8A8A' }}>Safari Owner</div>
+                      </div>
+                      <span className="pwa-badge pwa-badge-green">Active</span>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
-                      <div style={{ fontSize: 11, color: '#8A8A8A' }}>{o.bookings} bookings</div>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2D6A4F' }} className="tnum">LKR {(o.rev / 1000000).toFixed(2)}M</div>
-                  </div>
-                ))}
+                  ))}
+                {(!allUsers || allUsers.filter((u: any) => u.role === 'SAFARI_OWNER').length === 0) && (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: '#8A8A8A', fontSize: 13 }}>No safari owners yet</div>
+                )}
               </div>
-            </div>
-
-            {/* Note about live data */}
-            <div style={{ padding: '10px 14px', background: '#E3EFE9', borderRadius: 12, fontSize: 11.5, color: '#1F4F3A', textAlign: 'center' }}>
-              Analytics shown are platform-wide estimates · Live data coming soon
             </div>
           </div>
         )}

@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from 'recharts';
 import { api } from '@/lib/api';
 import { StatCard } from '@/components/ui/stat-card';
 import { DashboardShell } from '@/components/layout/DashboardShell';
@@ -147,6 +150,8 @@ function JobCard({ job, kind, onRespond }: {
 export default function VendorDashboard() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('Overview');
+  const [earningsPeriod, setEarningsPeriod] = useState<'month' | 'year' | 'all'>('year');
+  const [subGateOpen, setSubGateOpen] = useState(false);
   const qc = useQueryClient();
 
   useEffect(() => setMounted(true), []);
@@ -165,8 +170,8 @@ export default function VendorDashboard() {
   });
 
   const { data: earningsData } = useQuery({
-    queryKey: ['vendor-earnings'],
-    queryFn: () => api.get('/vendor/earnings').then((r) => r.data.data),
+    queryKey: ['vendor-earnings', earningsPeriod],
+    queryFn: () => api.get(`/vendor/earnings?period=${earningsPeriod}`).then((r) => r.data.data),
     enabled: mounted && activeTab === 'Earnings',
   });
 
@@ -177,6 +182,10 @@ export default function VendorDashboard() {
   });
 
   const handleRespond = (id: string, kind: 'jeep' | 'guide', status: 'ACCEPTED' | 'DECLINED') => {
+    if (status === 'ACCEPTED' && me?.vendor?.subscriptionStatus !== 'ACTIVE') {
+      setSubGateOpen(true);
+      return;
+    }
     respondMutation.mutate({ id, kind, status });
   };
 
@@ -203,6 +212,27 @@ export default function VendorDashboard() {
       userRole={me?.role}
       onLogout={() => { localStorage.clear(); window.location.href = '/login'; }}
     >
+      {/* Subscription gate modal */}
+      {subGateOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: '28px 20px', width: '100%', maxWidth: 480 }}>
+            <div style={{ width: 56, height: 56, background: '#FEE2E2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Lock size={24} color="#DC2626" />
+            </div>
+            <h2 style={{ textAlign: 'center', fontSize: 18, fontWeight: 800, margin: '0 0 8px', color: '#1A1A1A' }}>Subscription Required</h2>
+            <p style={{ textAlign: 'center', fontSize: 13, color: '#6B6B6B', margin: '0 0 20px' }}>
+              Your subscription is inactive. Renew to accept job assignments.
+            </p>
+            <button onClick={() => { setSubGateOpen(false); setActiveTab('Subscription'); }} className="pwa-btn pwa-btn-primary pwa-btn-block pwa-btn-lg">
+              View Subscription Plans
+            </button>
+            <button onClick={() => setSubGateOpen(false)} style={{ display: 'block', width: '100%', marginTop: 10, padding: '12px 0', fontSize: 14, color: '#6B6B6B', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: 768, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Subscription inactive notice */}
@@ -445,51 +475,104 @@ export default function VendorDashboard() {
         {activeTab === 'Earnings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {enabledFeatures.includes('REPORTS_ANALYTICS') ? (
-              earningsData ? (
-                <div className="pwa-card">
-                  <div style={{ padding: 16 }}>
-                    <div className="pwa-section-head" style={{ marginBottom: 16 }}>
-                      <h2>Earnings This Month</h2>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                      <div style={{ background: '#E3EFE9', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                        <p style={{ fontSize: 12, color: '#6B6B6B', marginBottom: 4, marginTop: 0 }}>Total Earnings</p>
-                        <p style={{ fontSize: 22, fontWeight: 800, color: '#2D6A4F', margin: 0 }}>
-                          LKR {parseFloat(earningsData.total || '0').toLocaleString()}
-                        </p>
-                      </div>
-                      <div style={{ background: '#DBEAFE', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                        <p style={{ fontSize: 12, color: '#6B6B6B', marginBottom: 4, marginTop: 0 }}>Payments</p>
-                        <p style={{ fontSize: 22, fontWeight: 800, color: '#1E40AF', margin: 0 }}>
-                          {earningsData.payments?.length || 0}
-                        </p>
-                      </div>
-                    </div>
-                    {earningsData.payments?.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                        {earningsData.payments.map((p: any) => (
-                          <div key={p.id} style={{
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            padding: '10px 0', borderBottom: '1px solid #E8E5DE',
-                          }}>
-                            <div>
-                              <p style={{ fontSize: 14, fontWeight: 500, color: '#1A1A1A', margin: 0 }}>{p.description}</p>
-                              <p style={{ fontSize: 12, color: '#8A8A8A', margin: 0 }}>
-                                {p.paidAt ? new Date(p.paidAt).toLocaleDateString() : '—'}
-                              </p>
-                            </div>
-                            <p style={{ fontSize: 14, fontWeight: 600, color: '#2D6A4F', margin: 0 }}>
-                              LKR {parseFloat(p.amount).toLocaleString()}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              <>
+                {/* Period selector */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['month', 'year', 'all'] as const).map((p) => (
+                    <button key={p} onClick={() => setEarningsPeriod(p)}
+                      style={{ flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                        borderColor: earningsPeriod === p ? '#2D6A4F' : '#E8E5DE',
+                        background: earningsPeriod === p ? '#E3EFE9' : '#fff',
+                        color: earningsPeriod === p ? '#2D6A4F' : '#6B6B6B',
+                      }}>
+                      {p === 'month' ? 'This Month' : p === 'year' ? 'This Year' : 'All Time'}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <p style={{ color: '#8A8A8A', textAlign: 'center', padding: '32px 0' }}>Loading earnings...</p>
-              )
+
+                {earningsData ? (() => {
+                  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  const now = new Date();
+                  const yearTotals = Array(12).fill(0);
+                  (earningsData.payments || []).forEach((p: any) => {
+                    if (p.paidAt) yearTotals[new Date(p.paidAt).getMonth()] += parseFloat(p.amount || '0');
+                  });
+                  const chartData = earningsPeriod === 'year'
+                    ? MONTHS.slice(0, now.getMonth() + 1).map((m, i) => ({ month: m, earnings: Math.round(yearTotals[i]) }))
+                    : null;
+
+                  return (
+                    <>
+                      {/* Summary cards */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ background: '#E3EFE9', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                          <p style={{ fontSize: 11, color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 4px' }}>Total Earned</p>
+                          <p style={{ fontSize: 20, fontWeight: 800, color: '#2D6A4F', margin: 0 }}>
+                            LKR {Math.round(parseFloat(earningsData.total || '0')).toLocaleString()}
+                          </p>
+                        </div>
+                        <div style={{ background: '#DBEAFE', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                          <p style={{ fontSize: 11, color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 4px' }}>Payments</p>
+                          <p style={{ fontSize: 20, fontWeight: 800, color: '#1E40AF', margin: 0 }}>
+                            {earningsData.payments?.length || 0}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Monthly bar chart */}
+                      {chartData && chartData.some((d) => d.earnings > 0) && (
+                        <div className="pwa-card" style={{ padding: 16 }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', margin: '0 0 12px' }}>Monthly Earnings</p>
+                          <ResponsiveContainer width="100%" height={160}>
+                            <BarChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE6" vertical={false} />
+                              <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#8A8A8A' }} axisLine={false} tickLine={false} />
+                              <YAxis hide />
+                              <Tooltip
+                                formatter={(v: number) => [`LKR ${v.toLocaleString()}`, 'Earnings']}
+                                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E8E5DE' }}
+                              />
+                              <Bar dataKey="earnings" fill="#2D6A4F" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+
+                      {/* Payment history list */}
+                      {earningsData.payments?.length > 0 && (
+                        <div className="pwa-card" style={{ overflow: 'hidden' }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', margin: 0, padding: '12px 16px 10px', borderBottom: '1px solid #F0EDE6' }}>Payment History</p>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {earningsData.payments.map((p: any) => (
+                              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid #F7F5F2' }}>
+                                <div>
+                                  <p style={{ fontSize: 13, fontWeight: 500, color: '#1A1A1A', margin: 0 }}>{p.description || 'Payment'}</p>
+                                  <p style={{ fontSize: 11, color: '#8A8A8A', margin: 0 }}>
+                                    {p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                  </p>
+                                </div>
+                                <p style={{ fontSize: 14, fontWeight: 700, color: '#2D6A4F', margin: 0 }}>
+                                  LKR {Math.round(parseFloat(p.amount || '0')).toLocaleString()}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {earningsData.payments?.length === 0 && (
+                        <div className="pwa-card" style={{ padding: 40, textAlign: 'center' }}>
+                          <TrendingUp size={32} color="#C5C0B8" style={{ margin: '0 auto 12px' }} />
+                          <p style={{ color: '#6B6B6B', fontWeight: 500, margin: 0 }}>No earnings for this period</p>
+                          <p style={{ color: '#8A8A8A', fontSize: 13, marginTop: 4, marginBottom: 0 }}>Payments will appear here once confirmed.</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })() : (
+                  <p style={{ color: '#8A8A8A', textAlign: 'center', padding: '32px 0' }}>Loading earnings…</p>
+                )}
+              </>
             ) : (
               <div className="pwa-card">
                 <div style={{ padding: 40, textAlign: 'center' }}>
