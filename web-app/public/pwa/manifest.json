@@ -2,13 +2,13 @@
   "name": "Safari Adventures",
   "short_name": "Safari",
   "description": "Manage every safari, every step. Book seats, manage vendors, and track revenue across every park in Sri Lanka.",
-  "start_url": "/pwa/",
+  "start_url": "/login",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#2D6A4F",
   "background_color": "#FAFAF7",
   "categories": ["travel", "business"],
-  "scope": "/pwa/",
+  "scope": "/",
   "icons": [
     {
       "src": "/pwa/icons/icon-192.png",

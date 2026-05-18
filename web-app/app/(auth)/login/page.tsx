@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Compass, BarChart2, Users, MapPin, Clock, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Compass, AlertCircle, Clock, Download, X } from 'lucide-react';
 import { loginUser } from '@/lib/auth';
 
 const schema = z.object({
@@ -17,20 +15,50 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const ROLE_REDIRECTS: Record<string, string> = {
-  SUPER_ADMIN: '/admin/dashboard',
+  SUPER_ADMIN:  '/admin/dashboard',
   SAFARI_OWNER: '/owner/dashboard',
-  VENDOR: '/vendor/dashboard',
-  CUSTOMER: '/book',
+  VENDOR:       '/vendor/dashboard',
+  CUSTOMER:     '/book',
 };
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState('');
-  const [isPending, setIsPending] = useState(false);
+  const [error, setError]               = useState('');
+  const [isPending, setIsPending]       = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installBanner, setInstallBanner] = useState(false);
+  const [installed, setInstalled]         = useState(false);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  // Capture the browser install prompt
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // If already installed (standalone mode), hide banner
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setInstalled(true);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstalled(true);
+    setInstallBanner(false);
+    setInstallPrompt(null);
+  };
 
   const onSubmit = async (data: FormData) => {
     setError('');
@@ -52,176 +80,181 @@ export default function LoginPage() {
 
   if (isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#FAFAF7' }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[20px] p-10 max-w-md w-full text-center"
-          style={{ border: '1px solid #E8E5DE', boxShadow: '0 6px 18px rgba(28,38,32,0.06), 0 1px 2px rgba(20,20,20,0.04)' }}
-        >
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-5">
-            <Clock className="w-8 h-8 text-amber-600" />
+      <div style={{ minHeight: '100vh', background: '#FAFAF7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '40px 32px', maxWidth: 380, width: '100%', textAlign: 'center', border: '1px solid #E8E5DE', boxShadow: '0 6px 18px rgba(0,0,0,0.06)' }}>
+          <div style={{ width: 64, height: 64, background: '#FEF3C7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <Clock style={{ width: 32, height: 32, color: '#D97706' }} />
           </div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: '#1A1A1A' }}>Pending Approval</h2>
-          <p className="leading-relaxed mb-8 text-sm" style={{ color: '#555555' }}>
-            Your account is under review by the Super Admin. You'll be able to sign in once approved.
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1A1A1A', margin: '0 0 10px' }}>Pending Approval</h2>
+          <p style={{ fontSize: 14, color: '#6B6B6B', lineHeight: 1.6, margin: '0 0 28px' }}>
+            Your account is under review. You&apos;ll be able to sign in once the Super Admin approves it.
           </p>
-          <button
-            onClick={() => setIsPending(false)}
-            className="text-sm font-semibold transition-colors"
-            style={{ color: '#2D6A4F' }}
-          >
+          <button onClick={() => setIsPending(false)} style={{ fontSize: 14, fontWeight: 600, color: '#2D6A4F', background: 'none', border: 'none', cursor: 'pointer' }}>
             ← Back to sign in
           </button>
-        </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* ── Left branding panel ── */}
-      <div className="hidden lg:flex lg:w-[45%] relative flex-col justify-between p-14 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1F4F3A 0%, #2D6A4F 60%, #3D7A5F 100%)' }}>
-        {/* Decorative blobs */}
-        <div className="absolute -top-28 -left-28 w-96 h-96 rounded-full blur-3xl" style={{ background: 'rgba(45,106,79,0.4)' }} />
-        <div className="absolute -bottom-32 -right-20 w-80 h-80 rounded-full blur-3xl" style={{ background: 'rgba(61,122,95,0.25)' }} />
-        <div className="absolute top-1/2 -right-12 w-52 h-52 rounded-full blur-2xl" style={{ background: 'rgba(31,79,58,0.2)' }} />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#FAFAF7' }}>
 
-        {/* Logo */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: '#2D6A4F', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <Compass className="w-5 h-5 text-white" strokeWidth={2} />
+      {/* ── Hero header ── */}
+      <div style={{
+        background: 'linear-gradient(160deg, #1A3D2B 0%, #2D6A4F 55%, #3D8A60 100%)',
+        padding: '48px 24px 80px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Decorative circles */}
+        <div style={{ position: 'absolute', top: -60, right: -60, width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ position: 'absolute', bottom: -80, left: -40, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
+
+        <div style={{ position: 'relative', maxWidth: 400, margin: '0 auto' }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+            <div style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.15)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+              <Compass style={{ width: 22, height: 22, color: '#fff' }} />
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>Safari Adventures</span>
           </div>
-          <span className="text-white font-bold text-xl tracking-tight">SafariPro</span>
-        </div>
 
-        {/* Hero text */}
-        <div className="relative z-10">
-          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Manage your safari<br />business smarter.
-          </h2>
-          <p className="text-base leading-relaxed max-w-xs" style={{ color: '#A8D5BC' }}>
-            The complete platform for safari operators, service vendors, and guides across Sri Lanka.
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: '0 0 8px', letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+            Welcome back
+          </h1>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', margin: 0 }}>
+            Sign in to manage your safaris
           </p>
         </div>
-
-        {/* Feature list */}
-        <div className="relative z-10 space-y-4">
-          {[
-            { Icon: MapPin,    title: 'Shared & Private Safaris', desc: 'Manage all your trips in one place' },
-            { Icon: Users,     title: 'Vendor Network',           desc: 'Jeeps, guides, food & accommodation' },
-            { Icon: BarChart2, title: 'Analytics & Reports',      desc: 'Track revenue and performance' },
-          ].map(({ Icon, title, desc }) => (
-            <div key={title} className="flex items-center gap-4">
-              <div className="w-10 h-10 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <Icon className="w-5 h-5" style={{ color: '#A8D5BC' }} />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm">{title}</p>
-                <p className="text-xs" style={{ color: '#A8D5BC' }}>{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* ── Right form panel ── */}
-      <div className="flex-1 flex items-center justify-center p-6" style={{ background: '#FAFAF7' }}>
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="w-full max-w-sm"
-        >
-          {/* Mobile logo + card wrapper */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md" style={{ background: '#2D6A4F' }}>
-              <Compass className="w-7 h-7 text-white" strokeWidth={2} />
-            </div>
-            <p className="font-bold text-xl" style={{ color: '#1A1A1A' }}>SafariPro</p>
-          </div>
+      {/* ── Form card (floats up over the hero) ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 16px 32px', marginTop: -40 }}>
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E8E5DE', boxShadow: '0 8px 32px rgba(0,0,0,0.10)', padding: '28px 24px', width: '100%', maxWidth: 400 }}>
 
-          {/* Mobile card shell */}
-          <div className="lg:p-0 p-6 rounded-[20px] bg-white lg:bg-transparent lg:border-0 lg:shadow-none" style={{ border: '1px solid #E8E5DE', boxShadow: '0 6px 18px rgba(28,38,32,0.06), 0 1px 2px rgba(20,20,20,0.04)' }}>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>Welcome back</h1>
-              <p className="text-sm mt-1" style={{ color: '#555555' }}>Sign in to continue to your dashboard</p>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1.5" style={{ color: '#555555' }}>
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  className="safari-input"
-                  placeholder="you@example.com"
-                  {...register('email')}
-                />
-                {errors.email && <p className="text-xs mt-1.5" style={{ color: '#C0392B' }}>{errors.email.message}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-1.5" style={{ color: '#555555' }}>
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    className="safari-input pr-12"
-                    placeholder="••••••••"
-                    {...register('password')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                    style={{ color: '#8A8A8A' }}
-                  >
-                    {showPassword
-                      ? <EyeOff className="w-4 h-4" />
-                      : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="text-xs mt-1.5" style={{ color: '#C0392B' }}>{errors.password.message}</p>}
-              </div>
-
-              {error && (
-                <div className="flex items-start gap-3 text-sm rounded-[10px] px-4 py-3" style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#C0392B' }}>
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{error}</span>
-                </div>
+          <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Email */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 7 }}>
+                Email address
+              </label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                className="pwa-input"
+                style={{ width: '100%' }}
+                {...register('email')}
+              />
+              {errors.email && (
+                <p style={{ fontSize: 12, color: '#DC2626', marginTop: 5 }}>{errors.email.message}</p>
               )}
+            </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full h-11 text-white font-semibold rounded-[14px] transition-colors text-sm flex items-center justify-center gap-2"
-                style={{ background: isSubmitting ? '#2D6A4F' : '#2D6A4F', opacity: isSubmitting ? 0.7 : 1 }}
-                onMouseEnter={e => { if (!isSubmitting) (e.currentTarget as HTMLButtonElement).style.background = '#1F4F3A'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#2D6A4F'; }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
-                  </>
-                ) : 'Sign in'}
-              </button>
-            </form>
+            {/* Password */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 7 }}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  className="pwa-input"
+                  style={{ width: '100%', paddingRight: 44 }}
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#8A8A8A', display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
+                </button>
+              </div>
+              {errors.password && (
+                <p style={{ fontSize: 12, color: '#DC2626', marginTop: 5 }}>{errors.password.message}</p>
+              )}
+            </div>
 
-            <p className="text-center text-sm mt-7" style={{ color: '#555555' }}>
+            {/* Error */}
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '10px 14px' }}>
+                <AlertCircle style={{ width: 15, height: 15, color: '#DC2626', flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: 13, color: '#DC2626' }}>{error}</span>
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="pwa-btn pwa-btn-primary pwa-btn-block pwa-btn-lg"
+              style={{ marginTop: 4 }}
+            >
+              {isSubmitting ? (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                  Signing in…
+                </span>
+              ) : 'Sign in'}
+            </button>
+          </form>
+
+          {/* Divider + register */}
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #F0EDE6', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: '#6B6B6B', margin: 0 }}>
               Don&apos;t have an account?{' '}
-              <Link href="/register" className="font-semibold" style={{ color: '#2D6A4F' }}>
+              <a href="/register" style={{ color: '#2D6A4F', fontWeight: 700, textDecoration: 'none' }}>
                 Create account
-              </Link>
+              </a>
             </p>
           </div>
-        </motion.div>
+        </div>
+
+        {/* Install app button (only if prompt is available and not yet installed) */}
+        {installBanner && !installed && (
+          <div style={{
+            marginTop: 16, width: '100%', maxWidth: 400,
+            background: '#1A3D2B', borderRadius: 16,
+            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+            boxShadow: '0 4px 16px rgba(26,61,43,0.3)',
+          }}>
+            <div style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.12)', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Compass style={{ width: 20, height: 20, color: '#A8D5BC' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', margin: 0 }}>Add to Home Screen</p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', margin: 0 }}>Install for faster access, works offline</p>
+            </div>
+            <button
+              onClick={handleInstall}
+              style={{ background: '#2D6A4F', border: 'none', borderRadius: 10, padding: '8px 14px', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+            >
+              <Download style={{ width: 14, height: 14 }} /> Install
+            </button>
+            <button
+              onClick={() => setInstallBanner(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', flexShrink: 0, padding: 4 }}
+            >
+              <X style={{ width: 16, height: 16 }} />
+            </button>
+          </div>
+        )}
+
+        {/* iOS instructions (Safari doesn't fire beforeinstallprompt) */}
+        {!installPrompt && !installed && (
+          <div style={{ marginTop: 16, width: '100%', maxWidth: 400, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, color: '#9A9A9A', margin: 0 }}>
+              On iPhone? Tap <strong style={{ color: '#555' }}>Share ↑</strong> → <strong style={{ color: '#555' }}>Add to Home Screen</strong>
+            </p>
+          </div>
+        )}
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
