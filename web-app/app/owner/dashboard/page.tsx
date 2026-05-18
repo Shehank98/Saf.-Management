@@ -990,12 +990,12 @@ export default function OwnerDashboard() {
                       key={t.key}
                       onClick={() => setVendorTab(t.key)}
                       style={{
-                        padding: '10px 16px', fontSize: 12, fontWeight: 500,
+                        padding: '10px 16px', fontSize: 12,
+                        fontWeight: vendorTab === t.key ? 600 : 500,
                         whiteSpace: 'nowrap', border: 'none', background: 'transparent',
                         cursor: 'pointer', transition: 'all 0.15s',
                         borderBottom: vendorTab === t.key ? '2px solid #2D6A4F' : '2px solid transparent',
                         color: vendorTab === t.key ? '#2D6A4F' : '#8A8A8A',
-                        fontWeight: vendorTab === t.key ? 600 : 500,
                         marginBottom: -1,
                       }}
                     >
