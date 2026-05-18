@@ -209,6 +209,11 @@ export default function OwnerDashboard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['owner-vendor-payments'] }),
   });
 
+  const cancelSharedMutation = useMutation({
+    mutationFn: (id: string) => api.patch(`/shared-safari/${id}/status`, { status: 'CANCELLED' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner-jeeps'] }),
+  });
+
   const features = me?.features?.filter((f) => f.enabled).map((f) => f.feature) || [];
   const has      = (f: string) => features.includes(f);
   const stats    = dashData?.stats;
@@ -1241,7 +1246,13 @@ export default function OwnerDashboard() {
                 </div>
               )}
 
-              {jeepsData?.map((jeep: any, i: number) => {
+              {[...(jeepsData || [])].sort((a: any, b: any) => {
+                const DONE = ['CANCELLED', 'COMPLETED'];
+                const aDone = DONE.includes(a.status) ? 1 : 0;
+                const bDone = DONE.includes(b.status) ? 1 : 0;
+                if (aDone !== bDone) return aDone - bDone;
+                return new Date(a.safariDate).getTime() - new Date(b.safariDate).getTime();
+              }).map((jeep: any, i: number) => {
                 const totalSeats = jeep.totalSeats || 6;
                 const paidSeats = jeep.paidSeats || 0;
                 const reservedSeats = jeep.reservedSeats || 0;
@@ -1383,6 +1394,18 @@ export default function OwnerDashboard() {
                               })}
                             </div>
                           )}
+                        </div>
+                      )}
+                      {/* Cancel button — only for active safaris */}
+                      {jeep.status !== 'CANCELLED' && jeep.status !== 'COMPLETED' && (
+                        <div style={{ padding: '10px 12px 12px', borderTop: bookingCount > 0 ? 'none' : '1px solid #F0EDE6' }}>
+                          <button
+                            onClick={() => { if (window.confirm('Cancel this shared safari? All bookings will be notified.')) cancelSharedMutation.mutate(jeep.id); }}
+                            disabled={cancelSharedMutation.isPending}
+                            style={{ width: '100%', padding: '9px 16px', borderRadius: 10, border: '1.5px solid #FECACA', background: '#FFF5F5', color: '#DC2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            {cancelSharedMutation.isPending ? 'Cancelling…' : 'Cancel Safari'}
+                          </button>
                         </div>
                       )}
                     </div>
