@@ -197,13 +197,12 @@ export async function reserveGuestSeat(req: Request, res: Response): Promise<voi
         approvalStatus: 'APPROVED',
       },
     });
-    await prisma.customer.create({ data: { userId: user.id } });
   }
 
-  const customer = await prisma.customer.findUnique({ where: { userId: user.id } });
+  // Ensure a customer profile exists (user may already exist without one)
+  let customer = await prisma.customer.findUnique({ where: { userId: user.id } });
   if (!customer) {
-    res.status(500).json(errorResponse('Failed to resolve customer profile'));
-    return;
+    customer = await prisma.customer.create({ data: { userId: user.id } });
   }
 
   const bookings = [];
