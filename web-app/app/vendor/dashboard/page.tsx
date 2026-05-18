@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { StatCard } from '@/components/ui/stat-card';
@@ -75,6 +76,7 @@ function JobCard({ job, kind, onRespond }: {
   kind: 'jeep' | 'guide';
   onRespond: (id: string, kind: 'jeep' | 'guide', status: 'ACCEPTED' | 'DECLINED') => void;
 }) {
+  const router = useRouter();
   return (
     <div className="pwa-card">
       <div style={{ padding: 16 }}>
@@ -111,23 +113,31 @@ function JobCard({ job, kind, onRespond }: {
               <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>Owner: {job.sharedJeep.owner.user.name}</p>
             )}
           </div>
-          {job.jobStatus === 'PENDING' && (
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={() => onRespond(job.id, kind, 'ACCEPTED')}
-                className="pwa-btn pwa-btn-primary pwa-btn-sm"
-              >
-                Accept
-              </button>
-              <button
-                onClick={() => onRespond(job.id, kind, 'DECLINED')}
-                className="pwa-btn pwa-btn-sm"
-                style={{ background: '#FEE2E2', color: '#991B1B' }}
-              >
-                Decline
-              </button>
-            </div>
-          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignItems: 'flex-end' }}>
+            <button
+              onClick={() => router.push(`/vendor/job/${job.id}`)}
+              className="pwa-btn pwa-btn-secondary pwa-btn-sm"
+            >
+              Details →
+            </button>
+            {job.jobStatus === 'PENDING' && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => onRespond(job.id, kind, 'ACCEPTED')}
+                  className="pwa-btn pwa-btn-primary pwa-btn-sm"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={() => onRespond(job.id, kind, 'DECLINED')}
+                  className="pwa-btn pwa-btn-sm"
+                  style={{ background: '#FEE2E2', color: '#991B1B' }}
+                >
+                  Decline
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

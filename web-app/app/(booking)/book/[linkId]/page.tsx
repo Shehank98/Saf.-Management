@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { Loader2, Search, Timer, Zap } from 'lucide-react';
+import { Loader2, Search, Timer, Zap, ArrowLeft, Heart, Star, MapPin } from 'lucide-react';
 import { MealPreferences } from '@/components/booking/MealPreferences';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -193,53 +193,80 @@ export default function BookingSeatPage() {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 
-  const MIN_SEATS = 4;
-  const reservedCount = jeep.bookings.filter((b) => TAKEN_STATUSES.includes(b.status)).length;
-  const occupancyPct = Math.min(100, Math.round((reservedCount / MIN_SEATS) * 100));
+  const paidSeats = jeep.bookings.filter((b) => ['PAID','CONFIRMED','PAYMENT_PENDING'].includes(b.status)).length;
+  const reservedOnlySeats = jeep.bookings.filter((b) => b.status === 'RESERVED').length;
+  const totalSeats = 6;
+  const openSeats = totalSeats - paidSeats - reservedOnlySeats;
+  const paidPct = (paidSeats / totalSeats) * 100;
+  const resvPct = (reservedOnlySeats / totalSeats) * 100;
+  const minPct = (4 / totalSeats) * 100;
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Hero header */}
-      <div className="bg-gradient-to-br from-green-900 via-green-800 to-emerald-700 text-white px-5 pt-10 pb-16">
-        <div className="max-w-lg mx-auto">
-          <p className="text-emerald-300 text-xs font-semibold uppercase tracking-wide mb-1">{jeep.owner.companyName}</p>
-          <h1 className="text-2xl font-bold">{jeep.safariType}</h1>
-          <p className="text-emerald-200 text-sm mt-1">{safariDate}</p>
-          <div className="flex items-center gap-3 mt-3">
-            <span className="text-sm font-semibold">{formatCurrency(basePrice)} / seat</span>
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-              jeep.status === 'CONFIRMED'
-                ? 'bg-green-200 text-green-900'
-                : 'bg-amber-200 text-amber-900'
-            }`}>
-              {jeep.status === 'CONFIRMED' ? 'Safari Confirmed' : needed > 0 ? `Need ${needed} more` : 'Pending'}
-            </span>
-          </div>
-
-          {/* Minimum occupancy tracker */}
-          {jeep.status !== 'CONFIRMED' && (
-            <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-xl p-3">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-semibold text-emerald-200">Seats reserved</span>
-                <span className="text-xs font-bold text-white">{reservedCount} / {MIN_SEATS} min.</span>
-              </div>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-300 rounded-full transition-all duration-500"
-                  style={{ width: `${occupancyPct}%` }}
-                />
-              </div>
-              <p className="text-xs text-emerald-300 mt-1.5">
-                {needed > 0
-                  ? `🔒 Reserve free — payment only after ${MIN_SEATS} seats are filled`
-                  : '✅ Minimum reached — your payment will be requested shortly'}
-              </p>
-            </div>
-          )}
+    <main style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: step === 0 ? 80 : 0 }}>
+      {/* ── Animated hero ── */}
+      <div className={`safari-thumb alt-${(jeep.id.charCodeAt(0) % 4)}`} style={{ height: 240, borderRadius: 0 }}>
+        <div className="sun" />
+        <div className="terrain" />
+        <div className="silhouette">
+          <div style={{ width: 8, height: 32 }} />
+          <div style={{ width: 14, height: 48 }} />
+          <div style={{ width: 6, height: 22 }} />
+          <div style={{ width: 10, height: 38 }} />
+          <div style={{ width: 5, height: 18 }} />
+        </div>
+        {/* Top buttons */}
+        <div style={{ position: 'absolute', top: 16, left: 16, right: 16, zIndex: 3, display: 'flex', justifyContent: 'space-between' }}>
+          <button
+            onClick={() => history.back()}
+            style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
+          >
+            <ArrowLeft size={16} color="#fff" />
+          </button>
+          <button
+            style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
+          >
+            <Heart size={15} color="#fff" />
+          </button>
+        </div>
+        {/* Bottom badges */}
+        <div style={{ position: 'absolute', bottom: 14, left: 14, right: 14, zIndex: 3, display: 'flex', gap: 6 }}>
+          <span style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(4px)' }}>
+            ⭐ 4.8
+          </span>
+          <span style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(4px)' }}>
+            {jeep.safariType}
+          </span>
+          <span style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999, backdropFilter: 'blur(4px)', fontFamily: 'monospace' }}>
+            {new Date(jeep.safariDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 -mt-6 pb-16">
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px 24px' }}>
+        {/* ── Occupancy panel ── */}
+        <div className="pwa-card pwa-card-pad" style={{ marginTop: 16, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em' }}>
+              {jeep.owner.companyName}
+            </p>
+            <span className={`pwa-badge ${jeep.status === 'CONFIRMED' ? 'pwa-badge-green' : jeep.status === 'PENDING_PAYMENT' ? 'pwa-badge-amber' : 'pwa-badge-gray'}`}>
+              {jeep.status}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 12px' }}>{safariDate}</p>
+          <div className="occ-bar">
+            <div className="fill">
+              <div className="paid" style={{ width: `${paidPct}%` }} />
+              <div className="reserved" style={{ width: `${resvPct}%` }} />
+            </div>
+            <div className="min-mark" style={{ left: `${minPct}%` }} />
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '4px 0 0' }}>
+            {paidSeats} paid · {reservedOnlySeats} reserved · {openSeats} open
+            {needed > 0 && <> · <strong style={{ color: 'var(--brown)' }}>{needed} more to trigger payment</strong></>}
+          </p>
+        </div>
+
         {/* Progress bar */}
         <div className="bg-white rounded-2xl shadow-sm border p-4 mb-4">
           <div className="flex gap-1.5 mb-2">
@@ -302,53 +329,44 @@ export default function BookingSeatPage() {
                 </div>
               )}
 
-              {/* Legend */}
-              <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-500 inline-block" /> Available</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-400 inline-block" /> Taken</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-yellow-400 inline-block" /> Your pick</span>
-              </div>
+              {/* Seat map */}
+              <div className="seat-map" style={{ marginBottom: 16 }}>
+                <div className="seat-jeep">
+                  {/* Driver row */}
+                  <div className="seat driver" style={{ gridColumn: '1 / 3' }}>🚗 DRV</div>
+                  <div className="seat-spacer" />
+                  <div style={{ gridColumn: '4 / 6' }} />
 
-              {/* Seat grid */}
-              <div className="bg-gray-800 rounded-2xl p-5 mb-5">
-                {/* Driver */}
-                <div className="bg-gray-700 rounded-lg h-8 mb-5 flex items-center justify-center">
-                  <span className="text-gray-400 text-xs font-medium tracking-widest">DRIVER</span>
+                  {/* Passenger rows A, B, C */}
+                  {([['A1','A2',1,2],['B1','B2',3,4],['C1','C2',5,6]] as [string,string,number,number][]).map(([lLabel,rLabel,lNum,rNum]) => {
+                    const lTaken = takenSeats.includes(lNum);
+                    const rTaken = takenSeats.includes(rNum);
+                    const lSel = selectedSeats.includes(lNum);
+                    const rSel = selectedSeats.includes(rNum);
+                    return [
+                      <button
+                        key={lLabel}
+                        className={`seat${lTaken ? ' taken' : lSel ? ' selected' : ''}`}
+                        onClick={() => toggleSeat(lNum)}
+                        disabled={lTaken}
+                      >{lLabel}</button>,
+                      <div key={`sp-l-${lLabel}`} className="seat-spacer" />,
+                      <div key={`aisle-${lLabel}`} className="seat-spacer" />,
+                      <button
+                        key={rLabel}
+                        className={`seat${rTaken ? ' taken' : rSel ? ' selected' : ''}`}
+                        onClick={() => toggleSeat(rNum)}
+                        disabled={rTaken}
+                      >{rLabel}</button>,
+                      <div key={`sp-r-${rLabel}`} className="seat-spacer" />,
+                    ];
+                  })}
                 </div>
-
-                {(['Front', 'Middle', 'Back'] as const).map((row, ri) => {
-                  const nums = ri === 0 ? [1, 2] : ri === 1 ? [3, 4] : [5, 6];
-                  return (
-                    <div key={row} className="mb-4">
-                      <p className="text-gray-500 text-xs text-center mb-2">{row} Row</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {nums.map((num) => {
-                          const isTaken = takenSeats.includes(num);
-                          const isSelected = selectedSeats.includes(num);
-                          return (
-                            <motion.button
-                              key={num}
-                              whileHover={!isTaken ? { scale: 1.03 } : {}}
-                              whileTap={!isTaken ? { scale: 0.95 } : {}}
-                              disabled={isTaken}
-                              onClick={() => toggleSeat(num)}
-                              className={`h-16 rounded-xl font-semibold text-white transition-all duration-150 ${
-                                isTaken
-                                  ? 'bg-red-400 cursor-not-allowed opacity-70'
-                                  : isSelected
-                                  ? 'bg-yellow-400 ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-800'
-                                  : 'bg-green-500 hover:bg-green-400'
-                              }`}
-                            >
-                              <div className="text-lg font-bold">{num}</div>
-                              <div className="text-xs mt-0.5">Seat {num}</div>
-                            </motion.button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+                <div className="seat-legend">
+                  <span><span className="sw" style={{ background: 'var(--surface)', border: '1.5px solid var(--line)' }} />Available</span>
+                  <span><span className="sw" style={{ background: 'var(--primary)' }} />Your pick</span>
+                  <span><span className="sw" style={{ background: '#E5E0D5' }} />Taken</span>
+                </div>
               </div>
 
               {/* Selected seats summary */}
@@ -366,15 +384,7 @@ export default function BookingSeatPage() {
                 </motion.div>
               )}
 
-              <button
-                disabled={selectedSeats.length === 0}
-                onClick={() => setStep(1)}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-colors"
-              >
-                {selectedSeats.length === 0
-                  ? 'Select at least one seat'
-                  : `Continue with ${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} →`}
-              </button>
+              <div style={{ height: 8 }} />
             </motion.div>
           )}
 
@@ -633,6 +643,34 @@ export default function BookingSeatPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── Fixed reserve footer (seat step only) ── */}
+      {step === 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+          background: '#fff', borderTop: '1px solid var(--line)',
+          padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+        }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0 }}>Pay later</p>
+            <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+              {formatCurrency(basePrice * Math.max(1, seatCount))}
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-3)' }}> / seat</span>
+            </p>
+          </div>
+          <button
+            disabled={selectedSeats.length === 0}
+            onClick={() => setStep(1)}
+            className="pwa-btn pwa-btn-primary pwa-btn-lg"
+            style={{ flexShrink: 0 }}
+          >
+            {selectedSeats.length === 0
+              ? 'Select a seat'
+              : `Reserve ${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} →`}
+          </button>
+        </div>
+      )}
     </main>
   );
 }
