@@ -356,6 +356,42 @@ export default function OwnerDashboard() {
                 </div>
               )}
 
+              {/* Customer Booking Portal — always visible in overview */}
+              {has('SHARED_TRIPS') && (
+                <div className="pwa-card" style={{ padding: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E3EFE9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D6A4F" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: 14, color: '#1A1A1A', margin: 0 }}>Your Customer Booking Portal</p>
+                      <p style={{ fontSize: 12, color: '#8A8A8A', margin: 0 }}>Share this link — customers book only your safaris</p>
+                    </div>
+                  </div>
+                  {pricingData?.portalUrl ? (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        readOnly
+                        value={pricingData.portalUrl}
+                        className="pwa-input"
+                        style={{ fontFamily: 'monospace', fontSize: 12, color: '#555', flex: 1, minWidth: 0 }}
+                      />
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(pricingData.portalUrl); setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); }}
+                        className="pwa-btn pwa-btn-primary"
+                        style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                      >
+                        {copySuccess ? '✓ Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setTab('settings')} className="pwa-btn pwa-btn-secondary" style={{ width: '100%', fontSize: 13 }}>
+                      Set pricing to activate portal →
+                    </button>
+                  )}
+                </div>
+              )}
+
               {features.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {has('PRIVATE_SAFARI') && (

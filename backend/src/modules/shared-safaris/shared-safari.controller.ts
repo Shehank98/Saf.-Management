@@ -205,6 +205,23 @@ export async function reserveGuestSeat(req: Request, res: Response): Promise<voi
     customer = await prisma.customer.create({ data: { userId: user.id } });
   }
 
+  // Pre-validate: all requested seats must be free before we book any of them
+  const jeepCheck = await prisma.sharedJeep.findUnique({
+    where: { id: jeepId },
+    include: { bookings: { where: { status: { in: ['RESERVED', 'PAYMENT_PENDING', 'PAID', 'CONFIRMED'] } }, select: { seatNumber: true } } },
+  });
+  if (!jeepCheck) { res.status(404).json(errorResponse('Safari not found')); return; }
+  if (jeepCheck.status === 'CANCELLED' || jeepCheck.status === 'COMPLETED') {
+    res.status(400).json(errorResponse('Safari is no longer available')); return;
+  }
+  const takenNums = jeepCheck.bookings.map((b) => b.seatNumber);
+  const conflict = seatNumbers.find((n: number) => takenNums.includes(n));
+  if (conflict) { res.status(409).json(errorResponse(`Seat ${conflict} is already taken`)); return; }
+  const availableAfter = jeepCheck.totalSeats - takenNums.length;
+  if (seatNumbers.length > availableAfter) {
+    res.status(409).json(errorResponse(`Only ${availableAfter} seat(s) left on this safari`)); return;
+  }
+
   const bookings = [];
   for (const seatNumber of seatNumbers) {
     const booking = await service.reserveSeat(jeepId, customer.id, seatNumber, pickupData);

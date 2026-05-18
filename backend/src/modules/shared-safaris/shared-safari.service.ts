@@ -125,7 +125,7 @@ export async function reserveSeat(
   }
 
   const seatTaken = jeep.bookings.find((b) => b.seatNumber === seatNumber);
-  if (seatTaken) throw Object.assign(new Error('Seat already taken'), { status: 409 });
+  if (seatTaken) throw Object.assign(new Error(`Seat ${seatNumber} is already taken`), { status: 409 });
 
   if (jeep.bookings.length >= MAX_SEATS) {
     throw Object.assign(new Error('Safari fully booked'), { status: 409 });
@@ -141,59 +141,66 @@ export async function reserveSeat(
 
   const newReservedCount = jeep.bookings.length + 1;
 
-  const booking = await prisma.$transaction(async (tx) => {
-    const newBooking = await tx.sharedSafariBooking.create({
-      data: {
-        jeepId,
-        customerId,
-        seatNumber,
-        rowPosition,
-        status: 'RESERVED',
-        basePrice,
-        mealPrice,
-        cameraRental: cameraRentalPrice,
-        totalAmount,
-        pickupLocation: pickupData.pickupLocation,
-        pickupLat: pickupData.pickupLat,
-        pickupLng: pickupData.pickupLng,
-        pickupTime: pickupData.pickupTime,
-        mealIncluded: pickupData.mealIncluded || false,
-        mealTypes: pickupData.mealTypes || [],
-        dietaryReqs: pickupData.dietaryReqs || [],
-        allergies: pickupData.allergies,
-        specialNotes: pickupData.specialNotes,
-        cameraNeeded: pickupData.cameraNeeded || false,
-      },
+  try {
+    const booking = await prisma.$transaction(async (tx) => {
+      const newBooking = await tx.sharedSafariBooking.create({
+        data: {
+          jeepId,
+          customerId,
+          seatNumber,
+          rowPosition,
+          status: 'RESERVED',
+          basePrice,
+          mealPrice,
+          cameraRental: cameraRentalPrice,
+          totalAmount,
+          pickupLocation: pickupData.pickupLocation,
+          pickupLat: pickupData.pickupLat ?? null,
+          pickupLng: pickupData.pickupLng ?? null,
+          pickupTime: pickupData.pickupTime || '5:45 AM',
+          mealIncluded: pickupData.mealIncluded || false,
+          mealTypes: pickupData.mealTypes || [],
+          dietaryReqs: pickupData.dietaryReqs || [],
+          allergies: pickupData.allergies || null,
+          specialNotes: pickupData.specialNotes || null,
+          cameraNeeded: pickupData.cameraNeeded || false,
+        },
+      });
+
+      let updateData: any = { reservedSeats: { increment: 1 } };
+      if (newReservedCount >= MAX_SEATS) {
+        updateData.status = 'FULLY_BOOKED';
+      }
+
+      await tx.sharedJeep.update({ where: { id: jeepId }, data: updateData });
+
+      return newBooking;
     });
 
-    let updateData: any = { reservedSeats: { increment: 1 } };
-    if (newReservedCount >= MAX_SEATS) {
-      updateData.status = 'FULLY_BOOKED';
+    // Kick off async triggers without blocking the HTTP response
+    if (newReservedCount === MIN_SEATS) {
+    // 4th seat: trigger payment links for all customers + notify owner + create overflow jeep
+      setImmediate(() =>
+        onFourthSeatReserved(jeepId).catch((err) =>
+          logger.error(`4th-seat trigger failed for jeep ${jeepId}:`, err)
+        )
+      );
+    } else if (jeep.status === 'PENDING_PAYMENT') {
+      setImmediate(() =>
+        onAdditionalSeatReserved(jeepId, booking.id).catch((err) =>
+          logger.error(`Additional-seat trigger failed for booking ${booking.id}:`, err)
+        )
+      );
     }
 
-    await tx.sharedJeep.update({ where: { id: jeepId }, data: updateData });
-
-    return newBooking;
-  });
-
-  // Kick off async triggers without blocking the HTTP response
-  if (newReservedCount === MIN_SEATS) {
-    // 4th seat: trigger payment links for all customers + notify owner + create overflow jeep
-    setImmediate(() =>
-      onFourthSeatReserved(jeepId).catch((err) =>
-        logger.error(`4th-seat trigger failed for jeep ${jeepId}:`, err)
-      )
-    );
-  } else if (jeep.status === 'PENDING_PAYMENT') {
-    // 5th or 6th seat on a jeep already in payment phase — send link immediately
-    setImmediate(() =>
-      onAdditionalSeatReserved(jeepId, booking.id).catch((err) =>
-        logger.error(`Additional-seat trigger failed for booking ${booking.id}:`, err)
-      )
-    );
+    return booking;
+  } catch (err: any) {
+    // Prisma unique constraint → seat was taken between our check and insert
+    if (err?.code === 'P2002') {
+      throw Object.assign(new Error(`Seat ${seatNumber} was just taken by another customer`), { status: 409 });
+    }
+    throw err;
   }
-
-  return booking;
 }
 
 export async function getBookingById(bookingId: string) {
@@ -354,6 +361,8 @@ export async function getOwnerSharedJeeps(ownerId: string) {
     where: { ownerId },
     include: {
       bookings: {
+        // Only active bookings — exclude cancelled/released so counts and lists are accurate
+        where: { status: { in: ['RESERVED', 'PAYMENT_PENDING', 'PAID', 'CONFIRMED'] } },
         include: {
           customer: { include: { user: { select: { name: true, phone: true } } } },
         },
