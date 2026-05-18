@@ -135,12 +135,13 @@ router.get('/pricing', wrap(async (req: AuthRequest, res: any) => {
     select: { userId: true, priceFullDay: true, priceHalfDayMorning: true, priceHalfDayAfternoon: true, mealPrice: true },
   });
   if (!owner) { res.status(404).json(errorResponse('Owner not found')); return; }
-  const webAppUrl = process.env.WEB_APP_URL || '';
+  const webAppUrl = process.env.WEB_APP_URL || process.env.APP_URL || '';
   res.json(successResponse({
     priceFullDay:          owner.priceFullDay,
     priceHalfDayMorning:   owner.priceHalfDayMorning,
     priceHalfDayAfternoon: owner.priceHalfDayAfternoon,
     mealPrice:             owner.mealPrice,
+    ownerId:               owner.userId,
     portalUrl: `${webAppUrl}/book?owner=${owner.userId}`,
   }));
 }));
@@ -166,12 +167,13 @@ router.put('/pricing', wrap(async (req: AuthRequest, res: any) => {
     priceHalfDayAfternoon: owner.priceHalfDayAfternoon ? parseFloat(owner.priceHalfDayAfternoon.toString()) : null,
   });
 
-  const webAppUrl = process.env.WEB_APP_URL || '';
+  const webAppUrl = process.env.WEB_APP_URL || process.env.APP_URL || '';
   res.json(successResponse({
     priceFullDay:          owner.priceFullDay,
     priceHalfDayMorning:   owner.priceHalfDayMorning,
     priceHalfDayAfternoon: owner.priceHalfDayAfternoon,
     mealPrice:             owner.mealPrice,
+    ownerId:               owner.userId,
     portalUrl: `${webAppUrl}/book?owner=${owner.userId}`,
     jeepsCreated: created,
   }, `Pricing saved. ${created} new jeep slots scheduled.`));

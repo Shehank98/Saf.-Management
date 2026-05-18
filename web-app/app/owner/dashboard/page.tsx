@@ -131,10 +131,17 @@ export default function OwnerDashboard() {
 
   const { data: pricingData, isLoading: pricingLoading } = useQuery<{
     priceFullDay: string | null; priceHalfDayMorning: string | null; priceHalfDayAfternoon: string | null;
-    mealPrice: string | null; portalUrl: string;
+    mealPrice: string | null; portalUrl: string; ownerId?: string;
   }>({
     queryKey: ['owner-pricing'],
-    queryFn: () => api.get('/owner/pricing').then((r) => r.data.data),
+    queryFn: () => api.get('/owner/pricing').then((r) => {
+      const d = r.data.data;
+      // If backend returned a relative URL (no WEB_APP_URL set), fix it client-side
+      if (d.portalUrl && d.portalUrl.startsWith('/')) {
+        d.portalUrl = `${window.location.origin}${d.portalUrl}`;
+      }
+      return d;
+    }),
     enabled: mounted,
   });
 
