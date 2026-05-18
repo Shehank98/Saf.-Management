@@ -70,6 +70,8 @@ export default function OwnerDashboard() {
   });
   const [showNewShared, setShowNewShared] = useState(false);
   const [newSharedForm, setNewSharedForm] = useState({ safariDate: '', safariType: 'Full Day', pricePerSeat: '', locationId: '' });
+  const [expandedJeeps, setExpandedJeeps] = useState<Set<string>>(new Set());
+  const toggleJeep = (id: string) => setExpandedJeeps((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Vendor assignment state
   const [vendorAssignSafari, setVendorAssignSafari] = useState<any>(null);
@@ -1227,48 +1229,166 @@ export default function OwnerDashboard() {
                 </motion.div>
               )}
 
-              {jeepsData?.map((jeep: any, i: number) => (
-                <motion.div key={jeep.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <div className="pwa-card" style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <div>
-                        <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>{jeep.safariType}</p>
-                        <p style={{ fontSize: 13, color: '#8A8A8A' }}>{formatShortDate(jeep.safariDate)}</p>
-                      </div>
-                      <span className={STATUS_PWA_BADGE[jeep.status] || 'pwa-badge pwa-badge-gray'}>
-                        {jeep.status}
-                      </span>
-                    </div>
-
-                    {/* Seat progress */}
-                    <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-                      {Array.from({ length: 6 }, (_, idx) => {
-                        const b = jeep.bookings?.find((bk: any) => bk.seatNumber === idx + 1);
-                        const bg = !b ? '#E8E5DE' : (b.status === 'PAID' || b.status === 'CONFIRMED') ? '#2D6A4F' : '#8B5E3C';
-                        return (
-                          <div
-                            key={idx}
-                            style={{ height: 16, flex: 1, borderRadius: 4, background: bg }}
-                            title={b ? `Seat ${idx+1}: ${b.status}` : `Seat ${idx+1}: Available`}
-                          />
-                        );
-                      })}
-                    </div>
-                    <p style={{ fontSize: 12, color: '#8A8A8A' }}>{jeep.paidSeats}/{jeep.totalSeats} paid · {jeep.reservedSeats} reserved</p>
-
-                    {jeep.bookings?.length > 0 && (
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #E8E5DE', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        {jeep.bookings.map((b: any) => (
-                          <div key={b.id} style={{ fontSize: 12, background: '#FAFAF7', borderRadius: 8, padding: 8 }}>
-                            <p style={{ fontWeight: 600, color: '#1A1A1A', marginBottom: 2 }}>Seat {b.seatNumber} — {b.customer?.user?.name || 'Guest'}</p>
-                            <p style={{ color: '#8A8A8A' }}>{b.status}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              {/* Empty state */}
+              {jeepsData?.length === 0 && (
+                <div className="pwa-card" style={{ padding: '40px 24px', textAlign: 'center' }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: '#E3EFE9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                    <Car size={26} color="#2D6A4F" />
                   </div>
-                </motion.div>
-              ))}
+                  <p style={{ fontWeight: 700, fontSize: 15, color: '#1A1A1A', margin: '0 0 6px' }}>No shared safaris yet</p>
+                  <p style={{ fontSize: 13, color: '#8A8A8A', margin: '0 0 20px' }}>Create your first shared safari to start selling seats to multiple customers.</p>
+                  <button onClick={() => setShowNewShared(true)} className="pwa-btn pwa-btn-primary" style={{ display: 'inline-flex' }}>+ New Shared Safari</button>
+                </div>
+              )}
+
+              {jeepsData?.map((jeep: any, i: number) => {
+                const totalSeats = jeep.totalSeats || 6;
+                const paidSeats = jeep.paidSeats || 0;
+                const reservedSeats = jeep.reservedSeats || 0;
+                const availableSeats = totalSeats - paidSeats - reservedSeats;
+                const fillPct = Math.round((paidSeats / totalSeats) * 100);
+                const revenue = jeep.pricePerSeat ? paidSeats * jeep.pricePerSeat : null;
+                const isExpanded = expandedJeeps.has(jeep.id);
+                const bookingCount = jeep.bookings?.length || 0;
+
+                return (
+                  <motion.div key={jeep.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                    <div className="pwa-card" style={{ overflow: 'hidden' }}>
+
+                      {/* Card header */}
+                      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #F0EDE6', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>
+                              {jeep.location?.name || 'Shared Safari'}
+                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#5B7C58', background: '#E3EFE9', borderRadius: 6, padding: '2px 8px' }}>
+                              {jeep.safariType}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 13, color: '#8A8A8A', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            {formatShortDate(jeep.safariDate)}
+                          </span>
+                        </div>
+                        <span className={STATUS_PWA_BADGE[jeep.status] || 'pwa-badge pwa-badge-gray'} style={{ flexShrink: 0 }}>
+                          {jeep.status}
+                        </span>
+                      </div>
+
+                      {/* Seat map */}
+                      <div style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Seats</span>
+                          <span style={{ fontSize: 12, color: '#8A8A8A' }}>
+                            {paidSeats} paid · {reservedSeats} reserved · {availableSeats} open
+                          </span>
+                        </div>
+
+                        {/* Seat circles */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 12 }}>
+                          {Array.from({ length: totalSeats }, (_, idx) => {
+                            const b = jeep.bookings?.find((bk: any) => bk.seatNumber === idx + 1);
+                            const isPaid = b && (b.status === 'PAID' || b.status === 'CONFIRMED');
+                            const isPending = b && !isPaid;
+                            return (
+                              <div
+                                key={idx}
+                                title={b ? `Seat ${idx + 1}: ${b.customer?.user?.name || 'Guest'} — ${b.status}` : `Seat ${idx + 1}: Available`}
+                                style={{
+                                  aspectRatio: '1',
+                                  borderRadius: 8,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  background: isPaid ? '#2D6A4F' : isPending ? '#D97706' : '#F0EDE6',
+                                  color: isPaid ? '#fff' : isPending ? '#fff' : '#9A9A9A',
+                                  border: isPaid ? 'none' : isPending ? 'none' : '1.5px dashed #D4CFC6',
+                                }}
+                              >
+                                {idx + 1}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Fill bar */}
+                        <div style={{ height: 6, borderRadius: 99, background: '#F0EDE6', overflow: 'hidden', marginBottom: 8 }}>
+                          <div style={{ height: '100%', borderRadius: 99, background: fillPct === 100 ? '#2D6A4F' : '#52A879', width: `${fillPct}%`, transition: 'width 0.6s ease' }} />
+                        </div>
+
+                        {/* Fill summary row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 12, color: '#8A8A8A' }}>{fillPct}% filled ({paidSeats}/{totalSeats} seats)</span>
+                          {revenue !== null && (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#2D6A4F' }}>
+                              LKR {revenue.toLocaleString()} collected
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Legend */}
+                        <div style={{ display: 'flex', gap: 14, marginTop: 10 }}>
+                          {[
+                            { color: '#2D6A4F', label: 'Paid' },
+                            { color: '#D97706', label: 'Reserved' },
+                            { color: '#F0EDE6', label: 'Available', border: '1.5px dashed #D4CFC6' },
+                          ].map(({ color, label, border }) => (
+                            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <div style={{ width: 10, height: 10, borderRadius: 3, background: color, border: border || 'none', flexShrink: 0 }} />
+                              <span style={{ fontSize: 11, color: '#8A8A8A' }}>{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bookings toggle */}
+                      {bookingCount > 0 && (
+                        <div style={{ borderTop: '1px solid #F0EDE6' }}>
+                          <button
+                            onClick={() => toggleJeep(jeep.id)}
+                            style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontWeight: 600, color: '#2D6A4F' }}
+                          >
+                            <span>Bookings ({bookingCount})</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9" /></svg>
+                          </button>
+
+                          {isExpanded && (
+                            <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {jeep.bookings.map((b: any) => {
+                                const name = b.customer?.user?.name || 'Guest';
+                                const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+                                const isPaid = b.status === 'PAID' || b.status === 'CONFIRMED';
+                                return (
+                                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#FAFAF7', borderRadius: 10 }}>
+                                    <div style={{ width: 32, height: 32, borderRadius: 10, background: isPaid ? '#E3EFE9' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: isPaid ? '#2D6A4F' : '#92400E', flexShrink: 0 }}>
+                                      {initials}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <p style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                                      {b.customer?.user?.phone && (
+                                        <p style={{ fontSize: 11, color: '#8A8A8A', margin: 0 }}>{b.customer.user.phone}</p>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                      <span style={{ fontSize: 11, fontWeight: 600, color: '#8A8A8A', background: '#F0EDE6', borderRadius: 6, padding: '2px 7px' }}>Seat {b.seatNumber}</span>
+                                      <span style={{ fontSize: 11, fontWeight: 600, borderRadius: 6, padding: '2px 7px', background: isPaid ? '#E3EFE9' : '#FEF3C7', color: isPaid ? '#2D6A4F' : '#92400E' }}>
+                                        {b.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </motion.div>
           )}
 
