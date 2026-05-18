@@ -64,6 +64,9 @@ export default function OwnerDashboard() {
   const [tab, setTab]             = useState<string>('overview');
   const [mounted, setMounted]     = useState(false);
   const [showNewPrivate, setShowNewPrivate] = useState(false);
+  const [showSendLink, setShowSendLink] = useState(false);
+  const [sendLinkPhone, setSendLinkPhone] = useState('');
+  const [sendLinkName, setSendLinkName] = useState('');
   const [newPrivateForm, setNewPrivateForm] = useState({
     safariDate: '', safariType: 'Full Day', numberOfGuests: '', totalAmount: '',
     customerName: '', customerPhone: '', customerEmail: '', specialRequests: '', locationId: '',
@@ -371,21 +374,31 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                   {pricingData?.portalUrl ? (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        readOnly
-                        value={pricingData.portalUrl}
-                        className="pwa-input"
-                        style={{ fontFamily: 'monospace', fontSize: 12, color: '#555', flex: 1, minWidth: 0 }}
-                      />
+                    <>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                        <input
+                          readOnly
+                          value={pricingData.portalUrl}
+                          className="pwa-input"
+                          style={{ fontFamily: 'monospace', fontSize: 12, color: '#555', flex: 1, minWidth: 0 }}
+                        />
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(pricingData.portalUrl); setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); }}
+                          className="pwa-btn pwa-btn-primary"
+                          style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                        >
+                          {copySuccess ? '✓ Copied!' : 'Copy'}
+                        </button>
+                      </div>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(pricingData.portalUrl); setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); }}
-                        className="pwa-btn pwa-btn-primary"
-                        style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                        onClick={() => { setShowSendLink(true); setSendLinkPhone(''); setSendLinkName(''); }}
+                        className="pwa-btn pwa-btn-secondary"
+                        style={{ width: '100%', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                       >
-                        {copySuccess ? '✓ Copied!' : 'Copy'}
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                        Send WhatsApp Link to Customer
                       </button>
-                    </div>
+                    </>
                   ) : (
                     <button onClick={() => setTab('settings')} className="pwa-btn pwa-btn-secondary" style={{ width: '100%', fontSize: 13 }}>
                       Set pricing to activate portal →
@@ -1839,6 +1852,81 @@ export default function OwnerDashboard() {
 
         </AnimatePresence>
       </div>
+
+      {/* ── SEND BOOKING LINK MODAL ── */}
+      {showSendLink && pricingData?.portalUrl && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={(e) => e.target === e.currentTarget && setShowSendLink(false)}
+        >
+          <div style={{ background: '#fff', borderRadius: 20, boxShadow: '0 20px 48px rgba(0,0,0,0.2)', width: '100%', maxWidth: 420 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #E8E5DE' }}>
+              <div>
+                <p style={{ fontWeight: 700, color: '#1A1A1A', margin: 0, fontSize: 16 }}>Send Booking Link</p>
+                <p style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>Customer will see only your safaris</p>
+              </div>
+              <button onClick={() => setShowSendLink(false)} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'transparent', fontSize: 20, color: '#8A8A8A', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>Customer Name (optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. John Silva"
+                  value={sendLinkName}
+                  onChange={(e) => setSendLinkName(e.target.value)}
+                  className="pwa-input"
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>Customer WhatsApp Number <span style={{ color: '#C0392B' }}>*</span></label>
+                <input
+                  type="tel"
+                  placeholder="+94 77 123 4567"
+                  value={sendLinkPhone}
+                  onChange={(e) => setSendLinkPhone(e.target.value)}
+                  className="pwa-input"
+                />
+                <p style={{ fontSize: 11, color: '#8A8A8A', marginTop: 4 }}>Include country code, e.g. +94771234567</p>
+              </div>
+
+              {/* Preview message */}
+              <div style={{ background: '#F5F0E8', borderRadius: 12, padding: '12px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 6px' }}>WhatsApp message preview</p>
+                <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.6, fontStyle: 'italic' }}>
+                  {sendLinkName ? `Hi ${sendLinkName}! ` : 'Hi! '}Here is your personal booking link for Safari Adventures. Click to choose a date and reserve your seat:{' '}
+                  <span style={{ color: '#2D6A4F', fontWeight: 600 }}>{pricingData.portalUrl}</span>
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, padding: '0 24px 24px' }}>
+              <button onClick={() => setShowSendLink(false)} className="pwa-btn pwa-btn-secondary" style={{ flex: 1 }}>Cancel</button>
+              {(() => {
+                const phone = sendLinkPhone.replace(/\D/g, '');
+                const name = sendLinkName.trim();
+                const msg = `${name ? `Hi ${name}! ` : 'Hi! '}Here is your personal booking link for Safari Adventures. Click to choose a date and reserve your seat: ${pricingData.portalUrl}`;
+                const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                return (
+                  <a
+                    href={phone ? whatsappUrl : undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={!phone ? (e) => e.preventDefault() : undefined}
+                    className="pwa-btn pwa-btn-primary"
+                    style={{ flex: 1, textDecoration: 'none', textAlign: 'center', background: '#25D366', opacity: phone ? 1 : 0.5, cursor: phone ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                    Send via WhatsApp
+                  </a>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardShell>
   );
 }

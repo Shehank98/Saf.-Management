@@ -60,6 +60,26 @@ function BookingContent() {
   const dates: AvailableDate[] = datesData?.data || [];
   const selectedDateInfo = dates.find((d) => d.date === selectedDate);
 
+  // Block access without an owner-specific link
+  if (!ownerUserId) {
+    return (
+      <main style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1A3D2B 0%, #2D6A4F 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '40px 32px', maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 20px 48px rgba(0,0,0,0.18)' }}>
+          <div style={{ width: 56, height: 56, background: '#E3EFE9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <Leaf className="w-7 h-7 text-green-700" />
+          </div>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', margin: '0 0 8px' }}>You need a booking link</h1>
+          <p style={{ fontSize: 14, color: '#6B6B6B', margin: '0 0 24px', lineHeight: 1.5 }}>
+            Safari bookings are by invitation only. Ask your safari operator to share their booking link with you.
+          </p>
+          <div style={{ background: '#F5F0E8', borderRadius: 12, padding: '14px 16px', fontSize: 13, color: '#8B5E3C', textAlign: 'left', lineHeight: 1.6 }}>
+            <strong>Already have a link?</strong> Open it from the message or WhatsApp your operator sent you.
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero */}
