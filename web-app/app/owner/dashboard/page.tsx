@@ -105,11 +105,13 @@ export default function OwnerDashboard() {
     enabled: mounted,
   });
 
+  const [sharedStatusFilter, setSharedStatusFilter] = useState<string>('ALL');
+
   const { data: jeepsData } = useQuery({
     queryKey: ['owner-jeeps'],
     queryFn: () => api.get('/shared-safari/owner/jeeps').then((r) => r.data.data),
-    enabled: tab === 'shared',
-    refetchInterval: tab === 'shared' ? 30_000 : false,
+    enabled: tab === 'shared' || tab === 'overview',
+    refetchInterval: (tab === 'shared' || tab === 'overview') ? 30_000 : false,
   });
 
   const { data: privateSafaris, isLoading: privateLoading } = useQuery({
@@ -391,6 +393,85 @@ export default function OwnerDashboard() {
                   )}
                 </div>
               )}
+
+              {/* Jeep pipeline card */}
+              {has('SHARED_TRIPS') && jeepsData && jeepsData.length > 0 && (() => {
+                const open      = (jeepsData as any[]).filter((j) => j.status === 'OPEN').length;
+                const paying    = (jeepsData as any[]).filter((j) => j.status === 'PENDING_PAYMENT').length;
+                const confirmed = (jeepsData as any[]).filter((j) => j.status === 'CONFIRMED').length;
+                const done      = (jeepsData as any[]).filter((j) => ['COMPLETED','CANCELLED'].includes(j.status)).length;
+                const nudgeBookings = (jeepsData as any[]).flatMap((j) => (j.bookings || []).filter((b: any) => b.status === 'RESERVED' && j.status !== 'CANCELLED'));
+                const recentBookings = (jeepsData as any[])
+                  .flatMap((j) => (j.bookings || []).map((b: any) => ({ ...b, jeep: j })))
+                  .sort((a: any, bk: any) => new Date(bk.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .slice(0, 5);
+                return (
+                  <>
+                    {/* Status pipeline */}
+                    <div className="pwa-card" style={{ padding: 16 }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 12px' }}>Shared Safari Pipeline</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                        {[
+                          { label: 'Open', count: open, bg: '#DBEAFE', color: '#1D4ED8' },
+                          { label: 'Paying', count: paying, bg: '#FEF3C7', color: '#92400E' },
+                          { label: 'Confirmed', count: confirmed, bg: '#DCFCE7', color: '#166534' },
+                          { label: 'Done', count: done, bg: '#F1F5F9', color: '#64748B' },
+                        ].map(({ label, count, bg, color }) => (
+                          <div key={label} style={{ background: bg, borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
+                            <div style={{ fontSize: 22, fontWeight: 800, color }}>{count}</div>
+                            <div style={{ fontSize: 11, color, opacity: 0.8, fontWeight: 600, marginTop: 2 }}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* WhatsApp nudge callout */}
+                    {nudgeBookings.length > 0 && (
+                      <div className="pwa-notice pwa-notice-amber" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+                          <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <p style={{ fontWeight: 700, margin: 0, fontSize: 13 }}>{nudgeBookings.length} customer{nudgeBookings.length !== 1 ? 's' : ''} awaiting payment</p>
+                            <p style={{ margin: 0, fontSize: 12 }}>Nudge via WhatsApp to collect faster</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setTab('shared')} className="pwa-btn pwa-btn-sm" style={{ background: '#25D366', color: '#fff', border: 'none', flexShrink: 0, fontSize: 11, padding: '6px 10px' }}>
+                          View
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Recent bookings */}
+                    {recentBookings.length > 0 && (
+                      <div className="pwa-card" style={{ overflow: 'hidden' }}>
+                        <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid #F0EDE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Recent Bookings</p>
+                          <button onClick={() => setTab('shared')} style={{ fontSize: 12, color: '#2D6A4F', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>See all →</button>
+                        </div>
+                        {recentBookings.map((b: any, i: number) => {
+                          const name = b.customer?.user?.name || 'Guest';
+                          const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+                          const isPaid = b.status === 'PAID' || b.status === 'CONFIRMED';
+                          return (
+                            <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: i < recentBookings.length - 1 ? '1px solid #F7F5F2' : 'none' }}>
+                              <div style={{ width: 34, height: 34, borderRadius: 10, background: isPaid ? '#E3EFE9' : '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: isPaid ? '#2D6A4F' : '#92400E', flexShrink: 0 }}>
+                                {initials}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                                <p style={{ fontSize: 11, color: '#8A8A8A', margin: 0 }}>{b.jeep.safariType} · Seat {b.seatNumber}</p>
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 600, borderRadius: 6, padding: '2px 7px', background: isPaid ? '#E3EFE9' : '#FEF3C7', color: isPaid ? '#2D6A4F' : '#92400E', flexShrink: 0 }}>
+                                {b.status}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {features.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -1179,12 +1260,45 @@ export default function OwnerDashboard() {
             <motion.div key="shared" {...fadeIn} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Shared Safaris</h2>
-                <button
-                  onClick={() => setShowNewShared(true)}
-                  className="pwa-btn pwa-btn-primary"
-                >
-                  + New Safari
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button onClick={() => setTab('settings')} style={{ width: 36, height: 36, borderRadius: 10, border: '1.5px solid #E8E5DE', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Pricing settings">
+                    <Settings style={{ width: 16, height: 16, color: '#6B6B6B' }} />
+                  </button>
+                  <button
+                    onClick={() => setShowNewShared(true)}
+                    className="pwa-btn pwa-btn-primary"
+                  >
+                    + New Safari
+                  </button>
+                </div>
+              </div>
+
+              {/* Status filter chips */}
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+                {[
+                  { key: 'ALL', label: 'All' },
+                  { key: 'OPEN', label: 'Open' },
+                  { key: 'PENDING_PAYMENT', label: 'Paying' },
+                  { key: 'CONFIRMED', label: 'Confirmed' },
+                  { key: 'COMPLETED', label: 'Done' },
+                ].map(({ key, label }) => {
+                  const active = sharedStatusFilter === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSharedStatusFilter(key)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                        border: active ? '1.5px solid #2D6A4F' : '1.5px solid #E8E5DE',
+                        background: active ? '#E3EFE9' : '#fff',
+                        color: active ? '#2D6A4F' : '#6B6B6B',
+                        cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* New shared safari modal */}
@@ -1282,7 +1396,7 @@ export default function OwnerDashboard() {
                 </div>
               )}
 
-              {[...(jeepsData || [])].sort((a: any, b: any) => {
+              {[...(jeepsData || [])].filter((j: any) => sharedStatusFilter === 'ALL' || j.status === sharedStatusFilter).sort((a: any, b: any) => {
                 const DONE = ['CANCELLED', 'COMPLETED'];
                 const aDone = DONE.includes(a.status) ? 1 : 0;
                 const bDone = DONE.includes(b.status) ? 1 : 0;
@@ -1311,6 +1425,9 @@ export default function OwnerDashboard() {
                             </span>
                             <span style={{ fontSize: 11, fontWeight: 600, color: '#5B7C58', background: '#E3EFE9', borderRadius: 6, padding: '2px 8px' }}>
                               {jeep.safariType}
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#8A8A8A', background: '#F0EDE6', borderRadius: 5, padding: '2px 6px', letterSpacing: '0.03em' }}>
+                              JP-{jeep.id.slice(-4).toUpperCase()}
                             </span>
                           </div>
                           <span style={{ fontSize: 13, color: '#8A8A8A', display: 'flex', alignItems: 'center', gap: 4 }}>

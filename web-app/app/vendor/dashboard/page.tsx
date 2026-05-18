@@ -150,8 +150,8 @@ export default function VendorDashboard() {
   const { data: jobsData, isLoading: jobsLoading } = useQuery<{ jeepJobs: Assignment[]; guideJobs: Assignment[] }>({
     queryKey: ['vendor-jobs'],
     queryFn: () => api.get('/vendor/jobs').then((r) => r.data.data),
-    enabled: mounted && activeTab === 'Jobs',
-    refetchInterval: activeTab === 'Jobs' ? 30_000 : false,
+    enabled: mounted && (activeTab === 'Jobs' || activeTab === 'Overview'),
+    refetchInterval: (activeTab === 'Jobs' || activeTab === 'Overview') ? 60_000 : false,
   });
 
   const { data: earningsData } = useQuery({
@@ -209,59 +209,151 @@ export default function VendorDashboard() {
         )}
 
         {/* ── OVERVIEW ── */}
-        {activeTab === 'Overview' && (
-          <>
-            {enabledFeatures.length > 0 ? (
-              <div>
-                <div className="pwa-section-head" style={{ marginBottom: 12 }}>
-                  <h2>Enabled Features</h2>
+        {activeTab === 'Overview' && (() => {
+          const allJobsOverview = [
+            ...(jobsData?.jeepJobs?.map((j) => ({ ...j, kind: 'jeep' as const })) || []),
+            ...(jobsData?.guideJobs?.map((j) => ({ ...j, kind: 'guide' as const })) || []),
+          ];
+          const pendingCount  = allJobsOverview.filter((j) => j.jobStatus === 'PENDING').length;
+          const upcomingCount = allJobsOverview.filter((j) => j.jobStatus === 'ACCEPTED').length;
+          const completedCount = allJobsOverview.filter((j) => j.jobStatus === 'COMPLETED').length;
+          const subEnd = me?.vendor?.subscriptionEnd ? new Date(me.vendor.subscriptionEnd) : null;
+          const daysLeft = subEnd ? Math.max(0, Math.ceil((subEnd.getTime() - Date.now()) / 86400000)) : null;
+          const subPct = daysLeft !== null ? Math.max(4, Math.min(100, (daysLeft / 30) * 100)) : 100;
+          const upcomingJobs2 = allJobsOverview.filter((j) => j.jobStatus === 'ACCEPTED').slice(0, 3);
+
+          return (
+            <>
+              {/* Stat cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <div className="pwa-card" style={{ padding: '12px 10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#92400E' }}>{pendingCount}</div>
+                  <div style={{ fontSize: 11, color: '#6B6B6B', marginTop: 2, fontWeight: 600 }}>Pending</div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-                  {enabledFeatures.map((feature) => {
-                    const info: Record<string, { icon: React.ElementType; label: string; desc: string }> = {
-                      BOOKING_MANAGEMENT: { icon: ClipboardList, label: 'Booking Management', desc: 'View and manage your assigned bookings' },
-                      REPORTS_ANALYTICS:  { icon: BarChart2,     label: 'Reports & Analytics', desc: 'View earnings and performance data' },
-                    };
-                    const item = info[feature];
-                    if (!item) return null;
-                    const ItemIcon = item.icon;
-                    return (
-                      <div key={feature} className="pwa-card">
-                        <div style={{ padding: 20, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-                          <div style={{
-                            width: 40, height: 40, background: '#E3EFE9', borderRadius: 12,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                          }}>
-                            <ItemIcon style={{ width: 20, height: 20, color: '#2D6A4F' }} />
-                          </div>
-                          <div>
-                            <p style={{ fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{item.label}</p>
-                            <p style={{ fontSize: 13, color: '#6B6B6B', marginTop: 2, marginBottom: 0 }}>{item.desc}</p>
+                <div className="pwa-card" style={{ padding: '12px 10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2D6A4F' }}>{upcomingCount}</div>
+                  <div style={{ fontSize: 11, color: '#6B6B6B', marginTop: 2, fontWeight: 600 }}>Upcoming</div>
+                </div>
+                <div className="pwa-card" style={{ padding: '12px 10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#1E40AF' }}>{completedCount}</div>
+                  <div style={{ fontSize: 11, color: '#6B6B6B', marginTop: 2, fontWeight: 600 }}>Completed</div>
+                </div>
+              </div>
+
+              {/* Pending jobs callout */}
+              {pendingCount > 0 && (
+                <div className="pwa-notice pwa-notice-amber" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+                    <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      <p style={{ fontWeight: 700, margin: 0, fontSize: 13 }}>{pendingCount} job{pendingCount !== 1 ? 's' : ''} awaiting response</p>
+                      <p style={{ margin: 0, fontSize: 12 }}>Accept within 6h to confirm your spot</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setActiveTab('Jobs')} className="pwa-btn pwa-btn-sm" style={{ background: '#D97706', color: '#fff', border: 'none', flexShrink: 0, fontSize: 11, padding: '6px 10px' }}>
+                    View
+                  </button>
+                </div>
+              )}
+
+              {/* Subscription mini-banner */}
+              {daysLeft !== null && (
+                <div style={{ background: '#F5F0E8', borderRadius: 14, padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Zap size={14} color="#8B5E3C" />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A' }}>Vendor Pro</span>
+                      <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 8, background: me?.vendor?.subscriptionStatus === 'ACTIVE' ? '#DCFCE7' : '#FEE2E2', color: me?.vendor?.subscriptionStatus === 'ACTIVE' ? '#166534' : '#991B1B', fontWeight: 600 }}>
+                        {me?.vendor?.subscriptionStatus || 'INACTIVE'}
+                      </span>
+                    </div>
+                    <button onClick={() => setActiveTab('Subscription')} style={{ fontSize: 11, color: '#8B5E3C', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>
+                      Manage →
+                    </button>
+                  </div>
+                  <div style={{ height: 5, background: '#E5DDD0', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${subPct}%`, background: '#8B5E3C', borderRadius: 3 }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                    <span style={{ fontSize: 11, color: '#6B6B6B' }}>{daysLeft} days remaining</span>
+                    <span style={{ fontSize: 11, color: '#6B6B6B' }}>{subEnd?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Upcoming jobs preview */}
+              {upcomingJobs2.length > 0 && (
+                <div className="pwa-card" style={{ overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid #F0EDE6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', margin: 0 }}>Upcoming Jobs</p>
+                    <button onClick={() => setActiveTab('Jobs')} style={{ fontSize: 12, color: '#2D6A4F', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>See all →</button>
+                  </div>
+                  {upcomingJobs2.map((j, i) => (
+                    <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: i < upcomingJobs2.length - 1 ? '1px solid #F7F5F2' : 'none' }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: '#E3EFE9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {j.kind === 'jeep' ? <Car size={15} color="#2D6A4F" /> : <Compass size={15} color="#2D6A4F" />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{safariType(j)} Safari</p>
+                        <p style={{ fontSize: 11, color: '#8A8A8A', margin: 0 }}>{safariDate(j)} · {guestCount(j)} guests</p>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, borderRadius: 6, padding: '2px 7px', background: '#DCFCE7', color: '#166534', flexShrink: 0 }}>
+                        Accepted
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Enabled features (when no jobs yet) */}
+              {allJobsOverview.length === 0 && enabledFeatures.length > 0 && (
+                <div>
+                  <div className="pwa-section-head" style={{ marginBottom: 12 }}>
+                    <h2>Enabled Features</h2>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                    {enabledFeatures.map((feature) => {
+                      const info: Record<string, { icon: React.ElementType; label: string; desc: string }> = {
+                        BOOKING_MANAGEMENT: { icon: ClipboardList, label: 'Booking Management', desc: 'View and manage your assigned bookings' },
+                        REPORTS_ANALYTICS:  { icon: BarChart2,     label: 'Reports & Analytics', desc: 'View earnings and performance data' },
+                      };
+                      const item = info[feature];
+                      if (!item) return null;
+                      const ItemIcon = item.icon;
+                      return (
+                        <div key={feature} className="pwa-card">
+                          <div style={{ padding: 20, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                            <div style={{ width: 40, height: 40, background: '#E3EFE9', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <ItemIcon style={{ width: 20, height: 20, color: '#2D6A4F' }} />
+                            </div>
+                            <div>
+                              <p style={{ fontWeight: 600, color: '#1A1A1A', margin: 0 }}>{item.label}</p>
+                              <p style={{ fontSize: 13, color: '#6B6B6B', marginTop: 2, marginBottom: 0 }}>{item.desc}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="pwa-card">
-                <div style={{ padding: 40, textAlign: 'center' }}>
-                  <div style={{
-                    width: 48, height: 48, background: '#F1EEE7', borderRadius: 14,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
-                  }}>
-                    <Lock style={{ width: 24, height: 24, color: '#8A8A8A' }} />
+                      );
+                    })}
                   </div>
-                  <p style={{ color: '#6B6B6B', fontWeight: 500, margin: 0 }}>No features enabled yet</p>
-                  <p style={{ color: '#8A8A8A', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
-                    The Super Admin will assign features to your account.
-                  </p>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+
+              {enabledFeatures.length === 0 && (
+                <div className="pwa-card">
+                  <div style={{ padding: 40, textAlign: 'center' }}>
+                    <div style={{ width: 48, height: 48, background: '#F1EEE7', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <Lock style={{ width: 24, height: 24, color: '#8A8A8A' }} />
+                    </div>
+                    <p style={{ color: '#6B6B6B', fontWeight: 500, margin: 0 }}>No features enabled yet</p>
+                    <p style={{ color: '#8A8A8A', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+                      The Super Admin will assign features to your account.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* ── JOBS ── */}
         {activeTab === 'Jobs' && (
