@@ -1,10 +1,12 @@
 // Safari Adventures — Service Worker
-const CACHE_NAME = 'safari-adventures-v1';
+const CACHE_NAME = 'safari-adventures-v2';
 const STATIC_ASSETS = [
   '/pwa/',
   '/pwa/index.html',
   '/pwa/styles.css',
   '/pwa/manifest.json',
+  '/pwa/icons/icon-192.png',
+  '/pwa/icons/icon-512.png',
   '/pwa/data.jsx',
   '/pwa/components.jsx',
   '/pwa/app.jsx',
