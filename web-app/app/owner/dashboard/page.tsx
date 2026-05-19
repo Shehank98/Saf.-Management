@@ -359,6 +359,9 @@ export default function OwnerDashboard() {
                   {has('SHARED_TRIPS') && (
                     <StatCard label="Upcoming Shared" value={stats.upcomingShared} icon={Car} iconBg="bg-green-100" iconColor="text-green-600" />
                   )}
+                  {has('SHARED_TRIPS') && (
+                    <StatCard label="Completed This Month" value={stats.completedSharedThisMonth ?? 0} icon={CheckCircle2} iconBg="bg-emerald-100" iconColor="text-emerald-700" />
+                  )}
                   {has('REPORTS_ANALYTICS') && (
                     <StatCard label="Month Revenue" value={formatCurrency(parseFloat(stats.monthRevenue || '0'))} icon={TrendingUp} iconBg="bg-blue-100" iconColor="text-blue-600" />
                   )}

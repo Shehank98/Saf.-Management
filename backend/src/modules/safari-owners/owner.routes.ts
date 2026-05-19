@@ -21,7 +21,7 @@ router.get('/dashboard', wrap(async (req: AuthRequest, res: any) => {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [upcomingShared, upcomingPrivate, monthRevenue, pendingVendorPayments] = await Promise.all([
+  const [upcomingShared, upcomingPrivate, monthRevenue, pendingVendorPayments, completedSharedThisMonth] = await Promise.all([
     prisma.sharedJeep.count({
       where: { ownerId: owner.id, safariDate: { gte: now }, status: { in: ['CONFIRMED', 'PENDING_PAYMENT', 'OPEN'] } },
     }),
@@ -44,6 +44,14 @@ router.get('/dashboard', wrap(async (req: AuthRequest, res: any) => {
         },
       },
     }),
+    // Safaris that reached 4+ paid seats (CONFIRMED or COMPLETED) this month
+    prisma.sharedJeep.count({
+      where: {
+        ownerId: owner.id,
+        safariDate: { gte: monthStart },
+        status: { in: ['CONFIRMED', 'COMPLETED'] },
+      },
+    }),
   ]);
 
   res.json(successResponse({
@@ -53,6 +61,7 @@ router.get('/dashboard', wrap(async (req: AuthRequest, res: any) => {
       upcomingPrivate,
       monthRevenue: monthRevenue._sum.totalAmount || 0,
       pendingVendorPayments,
+      completedSharedThisMonth,
     },
   }));
 }));
