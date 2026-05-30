@@ -14,6 +14,7 @@ const buttonVariants = cva(
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
+        success: 'bg-green-600 text-white hover:bg-green-700',
       },
       size: {
         default: 'h-10 px-4 py-2',
@@ -30,12 +31,30 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, loading = false, children, disabled, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        disabled={disabled || loading}
+        aria-busy={loading}
+        {...props}
+      >
+        {loading ? (
+          <span className="flex items-center gap-2">
+            <span className="h-4 w-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+            {children}
+          </span>
+        ) : (
+          children
+        )}
+      </Comp>
+    );
   }
 );
 Button.displayName = 'Button';
