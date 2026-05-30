@@ -313,6 +313,9 @@ export default function PayPage() {
               </div>
             )}
 
+            <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-700 leading-relaxed">
+              <strong>No refunds</strong> once the safari is confirmed (4+ seats paid). If the safari doesn't reach the minimum, you'll get a full refund.
+            </div>
             <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1"><Lock className="w-3 h-3" />Secured by Stripe</p>
           </div>
         )}

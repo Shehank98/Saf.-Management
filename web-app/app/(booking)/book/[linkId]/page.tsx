@@ -621,8 +621,14 @@ export default function BookingSeatPage() {
               </div>
 
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
-                <p className="font-semibold mb-1">Important Notice</p>
-                <p>Reserving is free — no payment now. Once 4+ seats are reserved, you'll receive a WhatsApp payment link. Safari is confirmed only after payment.</p>
+                <p className="font-semibold mb-1">Important — Refund Policy</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Reserving is free — no payment now.</li>
+                  <li>Once 4+ seats are reserved, you'll receive a WhatsApp payment link.</li>
+                  <li>Safari is confirmed only after 4+ seats are paid.</li>
+                  <li><strong>Once confirmed: NO REFUNDS.</strong> Payment is final.</li>
+                  <li>If safari doesn't reach 4 paid seats by the deadline, you'll receive a full refund.</li>
+                </ul>
               </div>
 
               <div className="flex gap-3 pt-1">

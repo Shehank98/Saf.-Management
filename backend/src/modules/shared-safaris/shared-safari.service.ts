@@ -67,35 +67,21 @@ export async function getJeepsByDateAndType(date: string, safariType: string, ow
     },
   });
 
-  // For each owner, show only one jeep: the most-filled one that still has open seats.
-  // This prevents showing both a manually-created and an auto-scheduled jeep for the same
-  // owner/date/type, and hides the original PENDING_PAYMENT jeep once an overflow OPEN
-  // jeep is created (so customers always book into the most-consolidated slot).
-  const byOwner = new Map<string, typeof allJeeps>();
-  for (const jeep of allJeeps) {
-    if (!byOwner.has(jeep.ownerId)) byOwner.set(jeep.ownerId, []);
-    byOwner.get(jeep.ownerId)!.push(jeep);
-  }
+  // Show all jeeps with available seats, sorted: most-filled first per owner.
+  // This lets customers see both a confirmed jeep (e.g. 4/6) and the overflow jeep (0/6).
+  const withSeats = allJeeps.filter(
+    (j) => j.totalSeats - j.reservedSeats - j.paidSeats > 0,
+  );
 
-  const result: typeof allJeeps = [];
-  for (const ownerJeeps of byOwner.values()) {
-    const withSeats = ownerJeeps.filter(
-      (j) => j.totalSeats - j.reservedSeats - j.paidSeats > 0,
-    );
-    if (withSeats.length === 0) continue;
+  const STATUS_PRIO: Record<string, number> = { CONFIRMED: 0, PENDING_PAYMENT: 1, OPEN: 2 };
+  withSeats.sort((a, b) => {
+    const pa = STATUS_PRIO[a.status] ?? 3;
+    const pb = STATUS_PRIO[b.status] ?? 3;
+    if (pa !== pb) return pa - pb;
+    return (b.reservedSeats + b.paidSeats) - (a.reservedSeats + a.paidSeats);
+  });
 
-    // Prefer PENDING_PAYMENT (most filled) → OPEN; within same status prefer most bookings
-    const STATUS_PRIO: Record<string, number> = { PENDING_PAYMENT: 0, CONFIRMED: 1, OPEN: 2 };
-    withSeats.sort((a, b) => {
-      const pa = STATUS_PRIO[a.status] ?? 3;
-      const pb = STATUS_PRIO[b.status] ?? 3;
-      if (pa !== pb) return pa - pb;
-      return (b.reservedSeats + b.paidSeats) - (a.reservedSeats + a.paidSeats);
-    });
-    result.push(withSeats[0]);
-  }
-
-  return result;
+  return withSeats;
 }
 
 export async function reserveSeat(
@@ -180,7 +166,7 @@ export async function reserveSeat(
 
     // Kick off async triggers without blocking the HTTP response
     if (newReservedCount === MIN_SEATS) {
-    // 4th seat: trigger payment links for all customers + notify owner + create overflow jeep
+      // 4th seat: trigger payment links for all customers + notify owner + create overflow jeep
       setImmediate(() =>
         onFourthSeatReserved(jeepId).catch((err) =>
           logger.error(`4th-seat trigger failed for jeep ${jeepId}:`, err)
@@ -190,6 +176,13 @@ export async function reserveSeat(
       setImmediate(() =>
         onAdditionalSeatReserved(jeepId, booking.id).catch((err) =>
           logger.error(`Additional-seat trigger failed for booking ${booking.id}:`, err)
+        )
+      );
+    } else if (newReservedCount < MIN_SEATS && jeep.status === 'OPEN') {
+      // Seats 1-3: send "Booking Received - Pending Confirmation" to customer
+      setImmediate(() =>
+        sendBookingReceivedNotification(jeepId, booking.id, newReservedCount).catch((err) =>
+          logger.error(`Booking received notification failed for booking ${booking.id}:`, err)
         )
       );
     }
@@ -239,11 +232,26 @@ export async function confirmPayment(bookingId: string, paymentId: string) {
     await tx.sharedJeep.update({ where: { id: booking.jeepId }, data: jeepUpdate });
   });
 
+  const isFirstConfirmation = willConfirm && booking.jeep.status !== 'CONFIRMED';
+
   // When jeep first confirms, cancel other pending bookings for customers in this jeep
-  if (willConfirm) {
+  // and send safari_confirmed WhatsApp to all paid customers + owner
+  if (isFirstConfirmation) {
     setImmediate(() => {
       cancelConflictingBookings(booking.jeepId, booking.customerId).catch((err) =>
         logger.error(`Failed to cancel conflicting bookings for jeep ${booking.jeepId}:`, err)
+      );
+      sendConfirmationNotifications(booking.jeepId).catch((err) =>
+        logger.error(`Failed to send confirmation notifications for jeep ${booking.jeepId}:`, err)
+      );
+    });
+  }
+
+  // Notify owner on 5th/6th seat payment or when fully booked
+  if (!isFirstConfirmation && paidCount > MIN_SEATS) {
+    setImmediate(() => {
+      sendCapacityUpdateToOwner(booking.jeepId, paidCount).catch((err) =>
+        logger.error(`Failed to send capacity update for jeep ${booking.jeepId}:`, err)
       );
     });
   }
@@ -463,6 +471,141 @@ export async function getPaymentTracking(jeepId: string, requestingOwnerId?: str
     guideName: jeep.guideAssignment?.vendor?.user?.name || null,
     seats,
   };
+}
+
+async function sendBookingReceivedNotification(
+  jeepId: string,
+  bookingId: string,
+  currentSeats: number,
+): Promise<void> {
+  const booking = await prisma.sharedSafariBooking.findUnique({
+    where: { id: bookingId },
+    include: {
+      customer: { include: { user: { select: { id: true, name: true, phone: true } } } },
+      jeep: { select: { safariDate: true, safariType: true, safariDeadline: true } },
+    },
+  });
+  if (!booking) return;
+
+  const needed = MIN_SEATS - currentSeats;
+  await sendWhatsApp({
+    to: booking.customer.user.phone,
+    template: 'booking_received_pending',
+    recipientId: booking.customer.user.id,
+    data: {
+      customerName: booking.customer.user.name,
+      date: booking.jeep.safariDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      safariType: booking.jeep.safariType,
+      seatNumber: booking.seatNumber,
+      currentBookings: currentSeats,
+      totalSeats: MAX_SEATS,
+      neededToConfirm: needed,
+      bookingId: booking.id,
+      deadline: booking.jeep.safariDeadline?.toLocaleString('en-US', { timeZone: 'Asia/Colombo', dateStyle: 'medium', timeStyle: 'short' }) || '',
+    },
+  }).catch((err) =>
+    logger.error(`Booking received WhatsApp failed (booking ${bookingId}):`, err)
+  );
+
+  logger.info(`[booking-received] Notification sent for booking ${bookingId} (seat ${currentSeats}/${MAX_SEATS})`);
+}
+
+async function sendConfirmationNotifications(jeepId: string): Promise<void> {
+  const jeep = await prisma.sharedJeep.findUnique({
+    where: { id: jeepId },
+    include: {
+      owner: { include: { user: { select: { id: true, name: true, phone: true } } } },
+      bookings: {
+        where: { status: 'PAID' },
+        include: { customer: { include: { user: { select: { id: true, name: true, phone: true } } } } },
+        orderBy: { seatNumber: 'asc' },
+      },
+      guideAssignment: { include: { vendor: { include: { user: { select: { name: true } } } } } },
+    },
+  });
+  if (!jeep) return;
+
+  const safariDateStr = jeep.safariDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const guideName = jeep.guideAssignment?.vendor?.user?.name || 'TBD';
+
+  // Send safari_confirmed to all paid customers
+  for (const booking of jeep.bookings) {
+    await sendWhatsApp({
+      to: booking.customer.user.phone,
+      template: 'safari_confirmed',
+      recipientId: booking.customer.user.id,
+      data: {
+        date: safariDateStr,
+        safariType: jeep.safariType,
+        seatNumber: booking.seatNumber,
+        guideName,
+        pickupTime: booking.pickupTime || '5:45 AM',
+      },
+    }).catch((err) =>
+      logger.error(`Safari confirmed WhatsApp failed (booking ${booking.id}):`, err)
+    );
+  }
+
+  // Notify owner
+  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app.up.railway.app';
+  const totalRevenue = jeep.bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount.toString()), 0);
+
+  if (jeep.owner.user.phone) {
+    await sendWhatsApp({
+      to: jeep.owner.user.phone,
+      template: 'owner_safari_confirmed',
+      recipientId: jeep.owner.user.id,
+      data: {
+        ownerName: jeep.owner.user.name,
+        date: safariDateStr,
+        safariType: jeep.safariType,
+        paidSeats: jeep.bookings.length,
+        totalSeats: MAX_SEATS,
+        remainingSeats: MAX_SEATS - jeep.bookings.length,
+        totalRevenue: totalRevenue.toFixed(0),
+        dashboardLink: `${webAppUrl}/owner/dashboard`,
+      },
+    }).catch((err) =>
+      logger.error(`Owner confirmation WhatsApp failed for jeep ${jeepId}:`, err)
+    );
+  }
+
+  logger.info(`[safari-confirmed] Notifications sent for jeep ${jeepId} (${jeep.bookings.length} paid customers)`);
+}
+
+async function sendCapacityUpdateToOwner(jeepId: string, paidCount: number): Promise<void> {
+  const jeep = await prisma.sharedJeep.findUnique({
+    where: { id: jeepId },
+    include: {
+      owner: { include: { user: { select: { id: true, name: true, phone: true } } } },
+      bookings: { where: { status: 'PAID' }, select: { totalAmount: true } },
+    },
+  });
+  if (!jeep || !jeep.owner.user.phone) return;
+
+  const totalRevenue = jeep.bookings.reduce((sum, b) => sum + parseFloat(b.totalAmount.toString()), 0);
+  const isFullyBooked = paidCount >= MAX_SEATS;
+  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app.up.railway.app';
+
+  await sendWhatsApp({
+    to: jeep.owner.user.phone,
+    template: isFullyBooked ? 'owner_safari_fully_booked' : 'owner_safari_capacity_update',
+    recipientId: jeep.owner.user.id,
+    data: {
+      ownerName: jeep.owner.user.name,
+      date: jeep.safariDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      safariType: jeep.safariType,
+      paidSeats: paidCount,
+      totalSeats: MAX_SEATS,
+      remainingSeats: MAX_SEATS - paidCount,
+      totalRevenue: totalRevenue.toFixed(0),
+      dashboardLink: `${webAppUrl}/owner/dashboard`,
+    },
+  }).catch((err) =>
+    logger.error(`Owner capacity update WhatsApp failed for jeep ${jeepId}:`, err)
+  );
+
+  logger.info(`[capacity-update] Owner notified for jeep ${jeepId} — ${paidCount}/${MAX_SEATS} paid${isFullyBooked ? ' (FULLY BOOKED)' : ''}`);
 }
 
 export async function autoScheduleJeeps(

@@ -281,7 +281,7 @@ function BookingContent() {
                           </span>
                         </div>
                         <span className={`pwa-badge ${jeep.status === 'CONFIRMED' ? 'pwa-badge-green' : jeep.status === 'PENDING_PAYMENT' ? 'pwa-badge-amber' : 'pwa-badge-gray'}`}>
-                          {jeep.status === 'OPEN' ? 'Open' : jeep.status === 'CONFIRMED' ? 'Confirmed' : jeep.status}
+                          {jeep.status === 'CONFIRMED' ? 'Confirmed' : jeep.status === 'PENDING_PAYMENT' ? 'Filling Up' : taken === 0 ? 'Just Opened' : 'Filling Up'}
                         </span>
                       </div>
                     </div>
@@ -305,7 +305,11 @@ function BookingContent() {
                       </div>
                       <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '0 0 8px' }}>
                         {paid} paid · {reserved} reserved · {open} open
-                        {needed > 0 && <> · <strong style={{ color: 'var(--brown)' }}>{needed} more to trigger payment</strong></>}
+                        {jeep.status === 'CONFIRMED'
+                          ? <> · <strong style={{ color: '#2D6A4F' }}>Guaranteed to go!</strong></>
+                          : needed > 0
+                          ? <> · <strong style={{ color: 'var(--brown)' }}>{needed} more to confirm</strong></>
+                          : null}
                       </p>
                       <div className="safari-card-footer">
                         <span className="price">

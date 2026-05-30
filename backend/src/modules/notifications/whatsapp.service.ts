@@ -167,6 +167,88 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>) => object> = {
     ],
   }),
 
+  // Sent to customer for seats 1-3 before safari is confirmed
+  booking_received_pending: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.customerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.seatNumber) },
+          { type: 'text', text: `${data.currentBookings}/${data.totalSeats}` },
+          { type: 'text', text: String(data.neededToConfirm) },
+          { type: 'text', text: String(data.deadline) },
+          { type: 'text', text: String(data.bookingId) },
+        ],
+      },
+    ],
+  }),
+
+  // Sent to owner when safari is confirmed (4+ paid seats)
+  owner_safari_confirmed: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.ownerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.paidSeats) },
+          { type: 'text', text: String(data.totalSeats) },
+          { type: 'text', text: String(data.remainingSeats) },
+          { type: 'text', text: `LKR ${data.totalRevenue}` },
+        ],
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: 0,
+        parameters: [{ type: 'text', text: String(data.dashboardLink) }],
+      },
+    ],
+  }),
+
+  // Sent to owner on 5th or 6th seat payment
+  owner_safari_capacity_update: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.ownerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: String(data.paidSeats) },
+          { type: 'text', text: String(data.totalSeats) },
+          { type: 'text', text: String(data.remainingSeats) },
+          { type: 'text', text: `LKR ${data.totalRevenue}` },
+        ],
+      },
+    ],
+  }),
+
+  // Sent to owner when all 6 seats are paid
+  owner_safari_fully_booked: (data) => ({
+    components: [
+      {
+        type: 'body',
+        parameters: [
+          { type: 'text', text: String(data.ownerName) },
+          { type: 'text', text: String(data.date) },
+          { type: 'text', text: String(data.safariType) },
+          { type: 'text', text: `LKR ${data.totalRevenue}` },
+        ],
+      },
+      {
+        type: 'button',
+        sub_type: 'url',
+        index: 0,
+        parameters: [{ type: 'text', text: String(data.dashboardLink) }],
+      },
+    ],
+  }),
+
   // Sent to the safari owner when the 4th seat is reserved and payment is triggered
   owner_safari_payment_alert: (data) => ({
     components: [
